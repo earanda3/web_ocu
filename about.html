@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #description {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 600px;
+            line-height: 1.6;
+            text-align: center;
+        }
+        
+        /* Custom fonts */
+        @font-face {
+            font-family: 'Minecraft';
+            src: url('fonts/Minecraft 2.ttf') format('truetype');
+        }
+        
+        @font-face {
+            font-family: 'O-Regular';
+            src: url('fonts/O-Regular.ttf') format('truetype');
+        }
+        
+        .letter {
+            display: inline-block;
+            transition: all 0.1s ease;
+            transform-origin: center;
+            color: #333;
+        }
+        
+        .font-minecraft {
+            font-family: 'Minecraft', monospace;
+        }
+        
+        .font-oregular {
+            font-family: 'O-Regular', serif;
+            font-size: 1.4em;
+        }
+        
+        .font-helvetica {
+            font-family: 'Helvetica', sans-serif;
+        }
+        
+        .font-courier {
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="description"></div>
+    </div>
+
+    <script>
+        const description = document.getElementById('description');
+        const fonts = ['font-minecraft', 'font-oregular', 'font-helvetica', 'font-courier'];
+        
+        function createTextWithSlotMachineEffect(element, text) {
+            element.innerHTML = '';
+            
+            text.split('').forEach((letter, index) => {
+                const span = document.createElement('span');
+                span.className = 'letter';
+                span.textContent = letter;
+                
+                const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
+                span.classList.add(randomFont);
+                
+                element.appendChild(span);
+                
+                setInterval(() => {
+                    fonts.forEach(font => span.classList.remove(font));
+                    const newFont = fonts[Math.floor(Math.random() * fonts.length)];
+                    span.classList.add(newFont);
+                    
+                    span.style.transform = 'scaleY(0.8)';
+                    setTimeout(() => {
+                        span.style.transform = 'scaleY(1)';
+                    }, 50);
+                    
+                }, 300 + (index * 50) + (Math.random() * 200));
+            });
+        }
+        
+        // Project description text
+        const projectText = `Aquest projecte és una interfície minimalista amb efectes de tragaperras tipogràfiques. Cada lletra canvia aleatòriament entre diferents tipografies, incloent Minecraft, O-Regular, Helvetica i Courier New. Els elements són arrossegables per l'espai, i es pot fer zoom i moure's per la interfície amb la roda del ratolí i les tecles de fletxa. El símbol de moneda permet fer donacions, i "tao" es pot descarregar com a PDF. Tot està dissenyat amb una estètica minimalista i neta.`;
+        
+        // Apply slot machine effect to description text
+        createTextWithSlotMachineEffect(description, projectText);
+    </script>
+</body>
+</html>
