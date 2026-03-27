@@ -1,0 +1,265 @@
+/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: white;
+    font-family: 'Helvetica', 'Arial', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    cursor: default;
+    margin: 0;
+    padding: 0;
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 200vw; /* Ampliar l'espai horitzontal */
+    height: 200vh; /* Ampliar l'espai vertical */
+    transform-origin: 0 0;
+    transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+/* Custom fonts */
+@font-face {
+    font-family: 'Minecraft';
+    src: url('../fonts/Minecraft 2.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'O-Regular';
+    src: url('../fonts/O-Regular.ttf') format('truetype');
+}
+
+/* Use O-Regular font in app modals */
+.color-modal, .color-modal * { font-family: 'O-Regular', serif; }
+.pdf-modal, .pdf-modal * { font-family: 'O-Regular', serif; }
+
+#tao {
+    position: absolute;
+    font-size: 24px;
+    color: #333;
+    text-decoration: none;
+    cursor: move;
+    user-select: none;
+    transition: color 0.2s ease;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    letter-spacing: 2px;
+}
+
+@media (max-width: 768px) {
+    #tao {
+        font-size: 16px !important;
+    }
+}
+
+/* Individual letter styles for slot machine effect */
+.letter {
+    display: inline-block;
+    transition: all 0.1s ease;
+    transform-origin: center;
+    animation: none;
+}
+
+/* Slot machine spinning effect */
+@keyframes spin {
+    0% { transform: rotateX(0deg) scaleY(1); }
+    50% { transform: rotateX(90deg) scaleY(0.5); }
+    100% { transform: rotateX(0deg) scaleY(1); }
+}
+
+.font-minecraft {
+    font-family: 'Minecraft', monospace;
+}
+
+.font-oregular {
+    font-family: 'O-Regular', serif;
+    font-size: 1.4em; /* O-Regular més gran */
+}
+
+.font-helvetica {
+    font-family: 'Helvetica', sans-serif;
+}
+
+.font-courier {
+    font-family: 'Courier New', monospace;
+}
+
+#currency {
+    transition: all 0.1s ease;
+    transform-origin: center;
+}
+
+/* Snake overlay */
+#snake-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 120; }
+.snake-pixel { position: absolute; width: 10px; height: 10px; background: #111; image-rendering: pixelated; }
+
+/* Snake HUD */
+#snake-hud { position: fixed; right: 16px; top: 12px; z-index: 9999; color: #333; user-select: none; }
+#snake-hud .line { text-align: right; letter-spacing: 2px; }
+#snake-hud .muted { opacity: 0.65; }
+#snake-hud.hidden { display: none; }
+
+/* Second Snake overlay/HUD */
+#snake2-layer { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 121; }
+#snake2-hud { position: fixed; left: 16px; top: 12px; z-index: 9999; color: #333; user-select: none; }
+#snake2-hud.hidden { display: none; }
+
+/* Hazard pixels spawned by "pixel" */
+.hazard-pixel { position: absolute; background: #e53935; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); pointer-events: auto; z-index: 110; }
+
+#tao:hover {
+    color: #666;
+}
+
+#tao:active {
+    color: #000;
+}
+
+/* Color Settings Modal */
+.color-modal {
+    display: none;
+    position: absolute;
+    z-index: 150;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 12px;
+    width: 300px;
+    padding: 14px 14px 10px 14px;
+    font-family: 'Helvetica', sans-serif;
+}
+.color-modal.show { display: block; }
+.color-modal h3 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    color: #666;
+    font-weight: 600;
+}
+.color-row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
+.color-row label { font-size: 13px; color: #777; margin-right: 10px; }
+.color-row input[type="color"] { width: 44px; height: 28px; border: none; background: transparent; padding: 0; }
+.color-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.color-actions button {
+    background: white;
+    color: #666;
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.color-actions button:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+
+/* Ensure images on canvas have NO frame/border */
+#canvas img { border: none !important; outline: none !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+
+/* Intro overlay */
+#intro-overlay {
+    position: fixed;
+    inset: 0;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    z-index: 1000;
+    transition: opacity 400ms ease;
+}
+#intro-overlay.hidden { opacity: 0; pointer-events: none; }
+.intro-text {
+    font-size: 24px; /* same size as existing words */
+    color: #222;
+    letter-spacing: 2px;
+    word-spacing: 0.8em; /* més espai entre paraules per llegibilitat */
+    user-select: none;
+    will-change: transform, opacity;
+    text-align: center;
+    perspective: 800px; /* needed for 3D flip */
+    display: inline-block;
+    clip-path: inset(0 0 100% 0); /* hidden by curtain initially */
+    max-width: min(92vw, 900px);
+    line-height: 1.5;
+    white-space: normal;
+    padding: 0 8px;
+}
+.intro-text.fade-out { opacity: 0; transition: opacity 300ms ease; }
+.intro-text.reveal { animation: revealCurtain 1800ms ease forwards; }
+/* Organic word crossfade/slide */
+.word-wrap { display: inline-block; transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1), transform 380ms cubic-bezier(0.22, 1, 0.36, 1); }
+.word-wrap.in { opacity: 0; transform: translateY(-6px); }
+.word-wrap.in.show { opacity: 1; transform: translateY(0); }
+.word-wrap.out { opacity: 1; transform: translateY(0); position: absolute; }
+.word-wrap.out.fade { opacity: 0; transform: translateY(6px); }
+
+/* Intro mode: show only intro words over clean white background */
+body.intro-active { background: #fff !important; }
+body.intro-active #canvas > :not(.intro-free-word) { opacity: 0 !important; pointer-events: none !important; }
+@media (max-width: 768px) {
+    #intro-overlay { padding: 16px; overflow: auto; }
+    .intro-text { font-size: clamp(18px, 2.8vw + 10px, 26px); line-height: 1.6; max-width: 94vw; }
+    /* Make all words smaller on mobile */
+    #canvas a, #currency {
+        font-size: 16px !important;
+    }
+    /* Ensure canvas is big enough on mobile */
+    #canvas {
+        width: 400vw !important;
+        height: 400vh !important;
+    }
+}
+/* Intro words fade utility */
+.intro-free-word { transition: opacity 420ms ease; }
+.intro-free-word.fade-out { opacity: 0; }
+/* STOP control */
+.intro-stop {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 9999;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: #111;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  user-select: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+.intro-stop:hover { background: #f5f5f5; }
+.intro-stop.frozen { opacity: 0.6; text-decoration: line-through; }
+
+/* Flip-clock style per-letter effect */
+.flip-letter {
+    display: inline-block;
+    transform-origin: top;
+    backface-visibility: hidden;
+    transform: rotateX(-90deg);
+    opacity: 0;
+}
+@keyframes flipIn {
+    0% { transform: rotateX(-90deg); opacity: 0; }
+    60% { opacity: 1; }
+    100% { transform: rotateX(0deg); opacity: 1; }
+}
+/* Flip animation for swapping fonts */
+@keyframes flipSwap {
+    0% { transform: rotateX(0deg); }
+    49% { transform: rotateX(-90deg); }
+    50% { transform: rotateX(-90deg); }
+    100% { transform: rotateX(0deg); }
+}
+@keyframes revealCurtain {
+    from { clip-path: inset(0 0 100% 0); }
+    to { clip-path: inset(0 0 0 0); }
+}

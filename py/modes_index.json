@@ -1,0 +1,184 @@
+{
+  "modes": [
+    {
+      "name": "Arnalds",
+      "file": "mode_arnalds.py"
+    },
+    {
+      "name": "Bach",
+      "file": "mode_bach.py"
+    },
+    {
+      "name": "Beethoven",
+      "file": "mode_beethoven.py"
+    },
+    {
+      "name": "Bit",
+      "file": "mode_bit.py"
+    },
+    {
+      "name": "Brasa",
+      "file": "mode_brasa.py"
+    },
+    {
+      "name": "Chopin",
+      "file": "mode_chopin.py"
+    },
+    {
+      "name": "Crackle",
+      "file": "mode_crackle.py"
+    },
+    {
+      "name": "Debussy",
+      "file": "mode_debussy.py"
+    },
+    {
+      "name": "Dinamo",
+      "file": "mode_dinamo.py"
+    },
+    {
+      "name": "Einaudi",
+      "file": "mode_einaudi.py"
+    },
+    {
+      "name": "Estatic",
+      "file": "mode_estatic.py"
+    },
+    {
+      "name": "Frahm",
+      "file": "mode_frahm.py"
+    },
+    {
+      "name": "Glass",
+      "file": "mode_glass.py"
+    },
+    {
+      "name": "Glitch",
+      "file": "mode_glitch.py"
+    },
+    {
+      "name": "Grana",
+      "file": "mode_grana.py"
+    },
+    {
+      "name": "Groove",
+      "file": "mode_groove.py"
+    },
+    {
+      "name": "Hardgroove",
+      "file": "mode_hardgroove.py"
+    },
+    {
+      "name": "Hardnoise",
+      "file": "mode_hardnoise.py"
+    },
+    {
+      "name": "Hardtechno",
+      "file": "mode_hardtechno.py"
+    },
+    {
+      "name": "Industrial",
+      "file": "mode_industrial.py"
+    },
+    {
+      "name": "Jazz Chords",
+      "file": "mode_jazz_chords.py"
+    },
+    {
+      "name": "Makina",
+      "file": "mode_makina.py"
+    },
+    {
+      "name": "Mandelbrot",
+      "file": "mode_mandelbrot.py"
+    },
+    {
+      "name": "Markov Genre",
+      "file": "mode_markov_genre.py"
+    },
+    {
+      "name": "Mozart",
+      "file": "mode_mozart.py"
+    },
+    {
+      "name": "Noise",
+      "file": "mode_noise.py"
+    },
+    {
+      "name": "Ona Caos",
+      "file": "mode_ona_caos.py"
+    },
+    {
+      "name": "Ona Pols",
+      "file": "mode_ona_pols.py"
+    },
+    {
+      "name": "Ona Quadrada",
+      "file": "mode_ona_quadrada.py"
+    },
+    {
+      "name": "Ona Respiracio",
+      "file": "mode_ona_respiracio.py"
+    },
+    {
+      "name": "Ona Serra",
+      "file": "mode_ona_serra.py"
+    },
+    {
+      "name": "Ona Sinusoidal",
+      "file": "mode_ona_sinusoidal.py"
+    },
+    {
+      "name": "Ona Triangular",
+      "file": "mode_ona_triangular.py"
+    },
+    {
+      "name": "Ona Walk",
+      "file": "mode_ona_walk.py"
+    },
+    {
+      "name": "Part",
+      "file": "mode_part.py"
+    },
+    {
+      "name": "Pedaljazz",
+      "file": "mode_pedaljazz.py"
+    },
+    {
+      "name": "Satie",
+      "file": "mode_satie.py"
+    },
+    {
+      "name": "Techno",
+      "file": "mode_techno.py"
+    },
+    {
+      "name": "Toacord",
+      "file": "mode_toacord.py"
+    },
+    {
+      "name": "Toarc",
+      "file": "mode_toarc.py"
+    },
+    {
+      "name": "Tocampanes",
+      "file": "mode_tocampanes.py"
+    },
+    {
+      "name": "Todrone",
+      "file": "mode_todrone.py"
+    },
+    {
+      "name": "Tojazz",
+      "file": "mode_tojazz.py"
+    },
+    {
+      "name": "Tormenta",
+      "file": "mode_tormenta.py"
+    },
+    {
+      "name": "Vida",
+      "file": "mode_vida.py"
+    }
+  ]
+}

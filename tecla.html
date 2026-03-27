@@ -1,0 +1,2829 @@
+<!DOCTYPE html>
+<html lang="ca">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T E C L A</title>
+
+    <!-- Pyodide (Python WebAssembly) — carregat de CDN, disponible com window.loadPyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.3/full/pyodide.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --fg: #222;
+            --fg-mid: #555;
+            --fg-light: #999;
+            --border: rgba(0, 0, 0, 0.08);
+            --border-h: rgba(0, 0, 0, 0.18);
+            --bg: #fff;
+            --bg-row: #fafafa;
+            --accent: #111;
+            --red: #c0392b;
+            --green: #27ae60;
+            --blue: #2980b9;
+            --radius: 10px;
+            /* simulador */
+            --sim-bg: #111;
+            --sim-card: #1a1a1a;
+            --sim-border: rgba(255, 255, 255, 0.07);
+            --sim-fg: #ccc;
+            --sim-fg-d: #666;
+            --btn-idle: #2a2a2a;
+            --btn-press: #3498db;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ── Header ──────────────────────────────────── */
+        header {
+            width: 100%;
+            max-width: 680px;
+            padding: 52px 24px 0;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 22px;
+            letter-spacing: 10px;
+            color: var(--fg);
+            font-weight: 400;
+            user-select: none;
+        }
+
+        #device-badge {
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            color: var(--fg-light);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color .3s;
+        }
+
+        #device-badge .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--fg-light);
+            transition: background .3s;
+            flex-shrink: 0;
+        }
+
+        #device-badge.connected {
+            color: var(--green);
+        }
+
+        #device-badge.connected .dot {
+            background: var(--green);
+        }
+
+        /* ── Nav tabs ────────────────────────────────── */
+        .main-nav {
+            width: 100%;
+            max-width: 680px;
+            padding: 20px 24px 0;
+            display: flex;
+            gap: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-tab {
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--fg-light);
+            padding-bottom: 10px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: color .2s, border-color .2s;
+            user-select: none;
+        }
+
+        .nav-tab.active {
+            color: var(--fg);
+            border-bottom-color: var(--fg);
+        }
+
+        .nav-tab:hover:not(.active) {
+            color: var(--fg-mid);
+        }
+
+        /* ── Main sections ───────────────────────────── */
+        main {
+            width: 100%;
+            max-width: 680px;
+            padding: 0 24px;
+            flex: 1;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* ── Buttons ─────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg);
+            color: var(--fg);
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: border-color .15s, box-shadow .15s, opacity .15s;
+            font-family: inherit;
+        }
+
+        .btn:hover:not(:disabled) {
+            border-color: var(--border-h);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .btn:disabled {
+            opacity: .38;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #333;
+            border-color: #333;
+        }
+
+        .btn-danger {
+            color: var(--red);
+            border-color: transparent;
+            padding: 4px 8px;
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            border-color: rgba(192, 57, 43, .2);
+            box-shadow: none;
+        }
+
+        /* ── Shared section styles ───────────────────── */
+        .section-label {
+            font-size: 11px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--fg-light);
+            margin-bottom: 4px;
+        }
+
+        .hint-text {
+            font-size: 13px;
+            color: var(--fg-light);
+            line-height: 1.6;
+            max-width: 420px;
+        }
+
+        /* ── Device tab ──────────────────────────────── */
+        #connect-section {
+            padding: 40px 0 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        #modes-section {
+            padding: 32px 0 0;
+        }
+
+        .modes-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .modes-count {
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--fg-light);
+        }
+
+        #modes-list {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .mode-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            transition: background .12s;
+            gap: 12px;
+        }
+
+        .mode-row:last-child {
+            border-bottom: none;
+        }
+
+        .mode-row:hover {
+            background: var(--bg-row);
+        }
+
+        .mode-name {
+            flex: 1;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+
+        .mode-source {
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: var(--fg-light);
+            text-transform: uppercase;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        .mode-source.custom {
+            color: var(--fg-mid);
+        }
+
+        .mode-row.removing {
+            opacity: .4;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            padding: 32px 16px;
+            text-align: center;
+            color: var(--fg-light);
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        /* ── Log ─────────────────────────────────────── */
+        #log-section {
+            padding: 28px 0 0;
+        }
+
+        #log-section.hidden {
+            display: none;
+        }
+
+        #log-output {
+            background: var(--bg-row);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 14px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: var(--fg-mid);
+            min-height: 60px;
+            max-height: 140px;
+            overflow-y: auto;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .log-ok {
+            color: var(--green);
+        }
+
+        .log-err {
+            color: var(--red);
+        }
+
+        .log-info {
+            color: var(--fg-light);
+        }
+
+        .log-warn {
+            color: #e67e22;
+        }
+
+        /* ── Not supported ───────────────────────────── */
+        #not-supported {
+            display: none;
+            margin-top: 20px;
+            padding: 14px 18px;
+            border: 1px solid rgba(192, 57, 43, .25);
+            border-radius: var(--radius);
+            background: rgba(192, 57, 43, .04);
+            font-size: 13px;
+            color: var(--red);
+            line-height: 1.6;
+            letter-spacing: .5px;
+        }
+
+        #not-supported.show {
+            display: block;
+        }
+
+        /* ── Spinner ─────────────────────────────────── */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--fg-mid);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        /* ── FadeIn ──────────────────────────────────── */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn .3s ease forwards;
+        }
+
+        /* ══════════════════════════════════════════════ */
+        /* ── SIMULADOR ─────────────────────────────── */
+        /* ══════════════════════════════════════════════ */
+
+        #sim-panel {
+            background: var(--sim-bg);
+            border-radius: 16px;
+            margin: 32px 0 48px;
+            overflow: hidden;
+        }
+
+        /* ─ Toolbar simulador ─────────────────────────── */
+        .sim-toolbar {
+            background: #1f1f1f;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--sim-border);
+        }
+
+        .sim-toolbar-label {
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--sim-fg-d);
+        }
+
+        .sim-select {
+            background: #2a2a2a;
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, .1);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-family: inherit;
+            letter-spacing: 1px;
+            cursor: pointer;
+            outline: none;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .sim-select:hover {
+            border-color: rgba(255, 255, 255, .2);
+        }
+
+        .sim-btn {
+            padding: 7px 16px;
+            border-radius: 7px;
+            border: 1px solid rgba(255, 255, 255, .1);
+            background: #2a2a2a;
+            color: #ccc;
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            cursor: pointer;
+            transition: background .15s, border-color .15s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .sim-btn:hover:not(:disabled) {
+            background: #333;
+            border-color: rgba(255, 255, 255, .2);
+        }
+
+        .sim-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .sim-btn:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+        }
+
+        .sim-btn-green {
+            background: rgba(39, 174, 96, .2);
+            border-color: rgba(39, 174, 96, .4);
+            color: #2ecc71;
+        }
+
+        .sim-btn-green:hover:not(:disabled) {
+            background: rgba(39, 174, 96, .3);
+        }
+
+        .sim-btn-red {
+            background: rgba(192, 57, 43, .2);
+            border-color: rgba(192, 57, 43, .4);
+            color: #e74c3c;
+        }
+
+        .sim-btn-red:hover:not(:disabled) {
+            background: rgba(192, 57, 43, .3);
+        }
+
+        #sim-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sim-fg-d);
+            transition: background .3s;
+            flex-shrink: 0;
+        }
+
+        #sim-status-dot.ready {
+            background: var(--green);
+        }
+
+        #sim-status-dot.running {
+            background: #3498db;
+            box-shadow: 0 0 6px #3498db88;
+        }
+
+        /* ─ Device grid ───────────────────────────────── */
+        .sim-device {
+            display: flex;
+            gap: 0;
+            padding: 28px 24px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        /* 4x4 button grid */
+        .sim-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 72px);
+            grid-template-rows: repeat(4, 72px);
+            gap: 8px;
+        }
+
+        .sim-key {
+            background: var(--btn-idle);
+            border: 1.5px solid rgba(255, 255, 255, .08);
+            border-radius: 8px;
+            color: #888;
+            font-size: 11px;
+            letter-spacing: 1px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            user-select: none;
+            transition: background .08s, transform .08s, border-color .08s;
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1.3;
+            text-align: center;
+        }
+
+        .sim-key:active,
+        .sim-key.pressed {
+            background: var(--btn-press);
+            border-color: rgba(52, 152, 219, .6);
+            color: #fff;
+            transform: scale(.94);
+        }
+
+        .sim-key .key-num {
+            font-size: 10px;
+            color: #555;
+            line-height: 1;
+        }
+
+        .sim-key.pressed .key-num {
+            color: rgba(255, 255, 255, .6);
+        }
+
+        .sim-key.key-keybrd {
+            background: #1c2e40;
+            border-color: rgba(41, 128, 185, .25);
+            color: #5dade2;
+        }
+
+        .sim-key.key-fx {
+            background: #1a2e1a;
+            border-color: rgba(39, 174, 96, .25);
+            color: #2ecc71;
+        }
+
+        .sim-key.key-stop {
+            background: #2e1a1a;
+            border-color: rgba(192, 57, 43, .3);
+            color: #e74c3c;
+        }
+
+        .sim-key.key-keybrd:active,
+        .sim-key.key-keybrd.pressed {
+            background: #2980b9;
+            color: #fff;
+        }
+
+        .sim-key.key-fx:active,
+        .sim-key.key-fx.pressed {
+            background: #27ae60;
+            color: #fff;
+        }
+
+        .sim-key.key-stop:active,
+        .sim-key.key-stop.pressed {
+            background: #c0392b;
+            color: #fff;
+        }
+
+        /* Potenciòmetres */
+        .sim-pots {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 200px;
+        }
+
+        .sim-pot-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sim-pot-label {
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--sim-fg-d);
+            width: 16px;
+            flex-shrink: 0;
+        }
+
+        .sim-pot-range {
+            -webkit-appearance: none;
+            appearance: none;
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: #333;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .sim-pot-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #888;
+            border: 2px solid #555;
+            transition: background .1s;
+        }
+
+        .sim-pot-range:hover::-webkit-slider-thumb {
+            background: #aaa;
+        }
+
+        .sim-pot-val {
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            color: #555;
+            width: 28px;
+            text-align: right;
+        }
+
+        /* ─ MIDI log del simulador ────────────────────── */
+        .sim-log-section {
+            padding: 0 20px 20px;
+        }
+
+        #sim-log {
+            background: #0a0a0a;
+            border: 1px solid rgba(255, 255, 255, .05);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-family: 'Courier New', monospace;
+            font-size: 11.5px;
+            color: #444;
+            min-height: 80px;
+            max-height: 160px;
+            overflow-y: auto;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .slog-ok {
+            color: #2ecc71;
+        }
+
+        .slog-err {
+            color: #e74c3c;
+        }
+
+        .slog-midi {
+            color: #3498db;
+        }
+
+        .slog-info {
+            color: #555;
+        }
+
+        .slog-warn {
+            color: #e67e22;
+        }
+
+        /* ─ Pyodide loading overlay ───────────────────── */
+        #pyodide-loader {
+            display: none;
+            padding: 24px 20px;
+            text-align: center;
+            color: var(--sim-fg-d);
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        #pyodide-loader.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        /* ── Firmware tab ─────────────────────────────── */
+        .fw-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
+        .fw-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+        }
+
+        .fw-status-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .fw-status-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .fw-badge {
+            font-size: 11px;
+            letter-spacing: 1px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: var(--bg-row);
+            border: 1px solid var(--border);
+            color: var(--fg-light);
+        }
+
+        .fw-badge.ok {
+            color: var(--green);
+            border-color: rgba(39, 174, 96, .3);
+            background: rgba(39, 174, 96, .06);
+        }
+
+        .fw-badge.err {
+            color: var(--red);
+            border-color: rgba(192, 57, 43, .25);
+            background: rgba(192, 57, 43, .04);
+        }
+
+        .fw-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* ── Keys tab ────────────────────────────────────── */
+        .keys-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .key-cell {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: var(--bg-row);
+        }
+
+        .key-cell-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: var(--fg-light);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .key-cell select {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-family: inherit;
+            font-size: 12px;
+            background: var(--bg);
+            color: var(--fg);
+        }
+
+        .key-cell.special {
+            background: var(--bg);
+            opacity: .6;
+        }
+
+        .key-cell.special .key-cell-label {
+            color: var(--fg-mid);
+        }
+
+        /* ── Modes checklist ─────────────────────────────── */
+        .modes-checklist {
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .modes-checklist-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            transition: background .1s;
+        }
+
+        .modes-checklist-row:last-child {
+            border-bottom: none;
+        }
+
+        .modes-checklist-row:hover {
+            background: var(--bg-row);
+        }
+
+        .modes-checklist-row input[type=checkbox] {
+            accent-color: var(--accent);
+        }
+
+        /* ── Footer ──────────────────────────────────── */
+        footer {
+            width: 100%;
+            max-width: 680px;
+            padding: 0 24px 32px;
+            font-size: 11px;
+            color: var(--fg-light);
+            letter-spacing: 1.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* ── Simulator: full-width ───────────────────── */
+        #tab-simulator {
+            margin: 0 -24px;
+            width: calc(100% + 48px);
+        }
+
+        #sim-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sim-content {
+            display: flex;
+            gap: 0;
+            min-height: 0;
+        }
+
+        /* ── Sidebar de modes ────────────────────────── */
+        .sim-sidebar {
+            width: 155px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #0e0e0e;
+            border-right: 1px solid rgba(255,255,255,.06);
+        }
+
+        .sim-sidebar-title {
+            font-size: 9px;
+            letter-spacing: 2.5px;
+            color: #444;
+            padding: 12px 14px 8px;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+
+        #sim-modes-list {
+            overflow-y: auto;
+            flex: 1;
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+            max-height: 440px;
+        }
+
+        .sim-mode-item {
+            padding: 9px 14px;
+            font-size: 11.5px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,.04);
+            user-select: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #888;
+            transition: background .1s, color .1s;
+        }
+
+        .sim-mode-item:hover { background: #1a1a1a; color: #ccc; }
+        .sim-mode-item.selected { background: rgba(52,152,219,.12); color: #3498db; border-left: 2px solid #3498db; padding-left: 12px; }
+
+        .sim-sidebar-hint {
+            padding: 10px 14px;
+            font-size: 9.5px;
+            color: #383838;
+            line-height: 1.5;
+            border-top: 1px solid rgba(255,255,255,.04);
+            flex-shrink: 0;
+        }
+
+        /* ── Key mode label ────────────────────────────── */
+        .key-mode-label {
+            font-size: 8px;
+            color: rgba(255,255,255,.3);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 64px;
+            pointer-events: none;
+            letter-spacing: 0;
+            line-height: 1;
+            margin-top: 1px;
+        }
+
+        .sim-key.has-mode { border-color: rgba(52,152,219,.35); }
+        .sim-key.has-mode .key-mode-label { color: rgba(52,152,219,.75); }
+        .sim-key.sim-active-mode { border-color: rgba(52,152,219,.8) !important; box-shadow: 0 0 10px rgba(52,152,219,.25); }
+
+        /* ── Theme tab ─────────────────────────────────── */
+        .theme-grid {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 4px 0 24px;
+        }
+
+        .theme-btn {
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 24px;
+            cursor: pointer;
+            text-align: center;
+            background: var(--bg-row);
+            transition: border-color .15s, background .15s;
+            font-size: 13px;
+            font-family: inherit;
+            color: var(--fg);
+            min-width: 120px;
+            letter-spacing: 1px;
+        }
+
+        .theme-btn:hover { border-color: var(--accent); }
+        .theme-btn.active { border-color: var(--accent); background: var(--bg-chip); }
+
+        .theme-swatch {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .theme-swatch span {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        /* ── Light theme ───────────────────────────────── */
+        body.theme-light {
+            --bg: #f0f0f0;
+            --bg-row: #fafafa;
+            --bg-chip: #e4e4e4;
+            --border: #d0d0d0;
+            --border-h: #b0b0b0;
+            --fg: #1a1a1a;
+            --fg-mid: #444;
+            --fg-light: #777;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --danger: #dc2626;
+            --green: #16a34a;
+            --red: #dc2626;
+            --btn-idle: #ddd;
+            --btn-press: #2563eb;
+            --sim-fg-d: #888;
+        }
+        body.theme-light header { background: #f0f0f0; }
+        body.theme-light .main-nav { background: #f0f0f0; }
+        body.theme-light .sim-key { color: #555; border-color: #ccc; }
+        body.theme-light #sim-log { background: #111; }
+        body.theme-light .sim-sidebar { background: #e8e8e8; border-right-color: #ccc; }
+        body.theme-light .sim-sidebar-title { color: #999; }
+        body.theme-light .sim-mode-item { color: #555; border-bottom-color: #ddd; }
+        body.theme-light .sim-mode-item:hover { background: #ddd; color: #222; }
+        body.theme-light .sim-sidebar-hint { color: #aaa; }
+
+        /* ── Neon theme ──────────────────────────────────── */
+        body.theme-neon {
+            --bg: #070707;
+            --bg-row: #0e0e0e;
+            --bg-chip: #141414;
+            --border: rgba(0,255,144,.12);
+            --border-h: rgba(0,255,144,.35);
+            --fg: #00ff90;
+            --fg-mid: #00cc70;
+            --fg-light: #007a44;
+            --accent: #00ff90;
+            --accent-hover: #00cc70;
+            --danger: #ff0066;
+            --green: #00ff90;
+            --red: #ff0066;
+            --btn-idle: #0d1a10;
+            --btn-press: #00ff90;
+            --sim-fg-d: #006633;
+        }
+        body.theme-neon .main-nav { border-bottom-color: rgba(0,255,144,.12); }
+        body.theme-neon .nav-tab.active { color: #00ff90; border-bottom-color: #00ff90; }
+        body.theme-neon .logo { color: #00ff90; }
+        body.theme-neon .sim-key { color: #00cc70; }
+        body.theme-neon .sim-key:active, body.theme-neon .sim-key.pressed { background: #00ff90; color: #000; border-color: #00ff90; }
+        body.theme-neon .sim-sidebar { background: #070707; border-right-color: rgba(0,255,144,.1); }
+        body.theme-neon .sim-mode-item.selected { background: rgba(0,255,144,.08); color: #00ff90; border-left-color: #00ff90; }
+        body.theme-neon .sim-sidebar-hint { color: #1a3d26; }
+
+        /* ── Inline create form ──────────────────────────────────── */
+        .create-form {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            background: var(--bg-row);
+            display: none;
+        }
+        .create-form.open { display: block; }
+        .create-form .form-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .create-form .form-row:last-child { margin-bottom: 0; }
+        .create-form input[type=text] {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            background: var(--bg);
+            color: var(--fg);
+            flex: 1;
+            min-width: 140px;
+        }
+        .create-form input[type=text]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .create-form label {
+            font-size: 11px;
+            color: var(--fg-light);
+            letter-spacing: 1px;
+        }
+        .form-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+        /* ── Progression / Scale cards ──────────────────────────── */
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .item-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px 14px;
+            background: var(--bg-row);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .item-card:hover { border-color: var(--border-h); }
+        .item-card-body { flex: 1; min-width: 0; }
+        .item-card-name {
+            font-size: 13px;
+            color: var(--fg);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .item-card-meta {
+            font-size: 11px;
+            color: var(--fg-light);
+            margin-bottom: 6px;
+        }
+        .chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+        .chip {
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 2px 7px;
+            font-size: 11px;
+            color: var(--fg-mid);
+            background: var(--bg-chip);
+            font-family: monospace;
+        }
+        .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(52,152,219,.08); }
+        .item-del-btn {
+            background: none;
+            border: none;
+            color: var(--fg-light);
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0 4px;
+            line-height: 1;
+            flex-shrink: 0;
+            opacity: .5;
+        }
+        .item-del-btn:hover { color: var(--red); opacity: 1; }
+
+        /* ── Interval grid (scale editor) ──────────────────────────── */
+        .interval-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 6px;
+        }
+        .interval-btn {
+            width: 34px;
+            height: 34px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-chip);
+            color: var(--fg-light);
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1px;
+            transition: background .1s, border-color .1s, color .1s;
+        }
+        .interval-btn.on {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--bg);
+            font-weight: 700;
+        }
+        .interval-btn .note-name { font-size: 9px; opacity: .7; }
+
+        /* ── Predefined scales checklist ─────────────────────────── */
+        .scales-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .scale-preset-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 12px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            cursor: pointer;
+            background: var(--bg-row);
+            transition: border-color .12s;
+        }
+        .scale-preset-card.enabled { border-color: var(--accent); }
+        .scale-preset-card input[type=checkbox] { flex-shrink: 0; accent-color: var(--accent); width: 14px; height: 14px; }
+        .scale-preset-info { flex: 1; min-width: 0; }
+        .scale-preset-name { font-size: 12.5px; color: var(--fg); margin-bottom: 3px; }
+        .scale-preset-notes { font-size: 9.5px; color: var(--fg-light); font-family: monospace; }
+
+        /* ── Warm theme ─────────────────────────────────────────────── */
+        body.theme-warm {
+            --bg: #1a1208;
+            --bg-row: #221a0e;
+            --bg-chip: #2c2010;
+            --border: rgba(255,180,60,.12);
+            --border-h: rgba(255,180,60,.35);
+            --fg: #f0c060;
+            --fg-mid: #c89040;
+            --fg-light: #806030;
+            --accent: #f0a020;
+            --accent-hover: #d08010;
+            --danger: #e05030;
+            --green: #90c040;
+            --red: #e05030;
+            --btn-idle: #2c2010;
+            --btn-press: #f0a020;
+            --sim-fg-d: #4a3010;
+        }
+        body.theme-warm .sim-sidebar { background: #1a1208; border-right-color: rgba(255,180,60,.1); }
+        body.theme-warm .sim-mode-item.selected { background: rgba(240,160,32,.1); color: #f0a020; border-left-color: #f0a020; }
+        body.theme-warm .nav-tab.active { color: #f0a020; border-bottom-color: #f0a020; }
+
+        /* ── Purple theme ───────────────────────────────────────────── */
+        body.theme-purple {
+            --bg: #0e0814;
+            --bg-row: #150e1e;
+            --bg-chip: #1e1428;
+            --border: rgba(160,80,240,.14);
+            --border-h: rgba(160,80,240,.4);
+            --fg: #d0a0f0;
+            --fg-mid: #a070c0;
+            --fg-light: #603890;
+            --accent: #a050e0;
+            --accent-hover: #8030c0;
+            --danger: #e04080;
+            --green: #60d0a0;
+            --red: #e04080;
+            --btn-idle: #1e1428;
+            --btn-press: #a050e0;
+            --sim-fg-d: #3a1860;
+        }
+        body.theme-purple .sim-sidebar { background: #0e0814; border-right-color: rgba(160,80,240,.1); }
+        body.theme-purple .sim-mode-item.selected { background: rgba(160,80,240,.1); color: #a050e0; border-left-color: #a050e0; }
+        body.theme-purple .nav-tab.active { color: #a050e0; border-bottom-color: #a050e0; }
+
+        /* ── Ocean theme ─────────────────────────────────────────────── */
+        body.theme-ocean {
+            --bg: #040d14;
+            --bg-row: #071520;
+            --bg-chip: #0a1e2e;
+            --border: rgba(0,180,255,.12);
+            --border-h: rgba(0,180,255,.4);
+            --fg: #80d8ff;
+            --fg-mid: #40a8d8;
+            --fg-light: #1c607a;
+            --accent: #00b4ff;
+            --accent-hover: #0090d0;
+            --danger: #ff4060;
+            --green: #00e0b0;
+            --red: #ff4060;
+            --btn-idle: #081c2e;
+            --btn-press: #00b4ff;
+            --sim-fg-d: #0a3050;
+        }
+        body.theme-ocean .sim-sidebar { background: #040d14; border-right-color: rgba(0,180,255,.1); }
+        body.theme-ocean .sim-mode-item.selected { background: rgba(0,180,255,.1); color: #00b4ff; border-left-color: #00b4ff; }
+        body.theme-ocean .nav-tab.active { color: #00b4ff; border-bottom-color: #00b4ff; }
+
+        /* ── High Contrast theme ─────────────────────────────────────── */
+        body.theme-hc {
+            --bg: #000000;
+            --bg-row: #0a0a0a;
+            --bg-chip: #141414;
+            --border: rgba(255,255,255,.3);
+            --border-h: rgba(255,255,255,.8);
+            --fg: #ffffff;
+            --fg-mid: #cccccc;
+            --fg-light: #888888;
+            --accent: #ffff00;
+            --accent-hover: #cccc00;
+            --danger: #ff4444;
+            --green: #44ff44;
+            --red: #ff4444;
+            --btn-idle: #1a1a1a;
+            --btn-press: #ffff00;
+            --sim-fg-d: #444444;
+        }
+        body.theme-hc .sim-mode-item.selected { background: rgba(255,255,0,.1); color: #ffff00; border-left-color: #ffff00; }
+        body.theme-hc .nav-tab.active { color: #ffff00; border-bottom-color: #ffff00; }
+
+        @media (max-width: 600px) {
+            header {
+                padding-top: 32px;
+            }
+
+            .logo {
+                letter-spacing: 6px;
+                font-size: 18px;
+            }
+
+            main {
+                padding: 0 16px;
+            }
+
+            #tab-simulator {
+                margin: 0 -16px;
+                width: calc(100% + 32px);
+            }
+
+            .sim-buttons-grid {
+                grid-template-columns: repeat(4, 60px);
+                grid-template-rows: repeat(4, 60px);
+                gap: 6px;
+            }
+
+            .sim-key {
+                font-size: 10px;
+            }
+
+            .sim-sidebar {
+                width: 120px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <span class="logo">T E C L A</span>
+        <div id="device-badge">
+            <span class="dot"></span>
+            <span id="device-name">desconnectat</span>
+        </div>
+    </header>
+
+    <!-- Nav tabs -->
+    <nav class="main-nav">
+        <span class="nav-tab active" data-tab="keys">tecles</span>
+        <span class="nav-tab" data-tab="modes">modes i escales</span>
+        <span class="nav-tab" data-tab="progressions">progressions</span>
+        <span class="nav-tab" data-tab="scales">escales</span>
+        <span class="nav-tab" data-tab="simulator">simulador</span>
+        <span class="nav-tab" data-tab="firmware">firmware</span>
+        <span class="nav-tab" data-tab="aparenca">aparença</span>
+    </nav>
+
+    <main>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- TAB: Tecles                                   -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="tab-panel active" id="tab-keys">
+
+            <div id="not-supported"></div>
+
+            <!-- Connexió (sempre visible) -->
+            <section id="connect-section">
+                <p class="section-label">Dispositiu</p>
+                <p class="hint-text">
+                    Connecta el TECLA per USB&#8209;C i selecciona el volum <code>CIRCUITPY</code>
+                    per aplicar la configuració al dispositiu. Pots configurar les tecles sense connexió.
+                </p>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn btn-primary" id="btn-connect">connecta dispositiu</button>
+                    <button class="btn" id="btn-disconnect" style="display:none">desconnecta</button>
+                </div>
+            </section>
+
+            <div style="height:1px;background:var(--border);margin:16px 0;"></div>
+
+            <!-- Selector de Capa -->
+            <section style="padding:0 0 16px;">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <p class="section-label">Capa</p>
+                    <select id="bank-select"
+                        style="border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:inherit;font-size:13px;background:var(--bg);">
+                        <option>Capa 1</option>
+                        <option>Capa 2</option>
+                    </select>
+                    <button class="btn" id="btn-new-bank">+ nova capa</button>
+                    <button class="btn btn-danger" id="btn-del-bank">eliminar capa</button>
+                </div>
+            </section>
+
+            <!-- Grid 4x4 de tecles -->
+            <section>
+                <p class="section-label" style="margin-bottom:16px;">Configuració de Tecles</p>
+                <div id="keys-grid"><!-- generat per JS --></div>
+                <div style="margin-top:20px;display:flex;justify-content:flex-end;">
+                    <button class="btn btn-primary" id="btn-save-keys">guardar configuració</button>
+                </div>
+            </section>
+
+            <section id="log-section" class="hidden">
+                <div style="height:1px;background:var(--border);margin:28px 0 16px;"></div>
+                <p class="section-label" style="margin-bottom:10px;">Log</p>
+                <div id="log-output"></div>
+            </section>
+
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- TAB: Modes i Escales                          -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-modes">
+
+            <section style="padding:32px 0 24px;">
+                <p class="section-label">Modes TECLA</p>
+                <p class="hint-text" style="margin-bottom:20px;">Activa els modes que vols tenir disponibles al simulador i al dispositiu.</p>
+                <div id="modes-list-check"><!-- generat per JS --></div>
+                <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="btn" id="btn-import">+ importar mode .py</button>
+                    <button class="btn btn-primary" id="btn-save-modes">desar modes actius</button>
+                </div>
+            </section>
+
+            <div style="height:1px;background:var(--border);margin:8px 0 24px;"></div>
+
+            <section style="padding-bottom:32px;">
+                <p class="section-label">Escales predefinides</p>
+                <p class="hint-text" style="margin-bottom:4px;">Selecciona les escales musicals disponibles al mode teclat.</p>
+                <div class="scales-grid" id="preset-scales-grid"><!-- generat per JS --></div>
+                <div style="margin-top:16px;display:flex;gap:10px;">
+                    <button class="btn btn-primary" id="btn-save-scale-prefs">desar preferències</button>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- TAB: Progressions                             -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-progressions">
+            <section style="padding:32px 0 24px;">
+                <p class="section-label">Progressions d'Acords</p>
+                <p class="hint-text" style="margin-bottom:20px;">Crea progressions d'acords (ex: <code>I IV V I</code> o <code>Am F C G</code>). Separa els acords amb espais.</p>
+
+                <!-- Formulari creació -->
+                <div class="create-form" id="prog-form">
+                    <div class="form-row">
+                        <label>Nom</label>
+                        <input type="text" id="prog-name" placeholder="ex: ii–V–I en Do" maxlength="40">
+                    </div>
+                    <div class="form-row">
+                        <label>Acords</label>
+                        <input type="text" id="prog-chords" placeholder="ex: ii V I   o   Am F C G" style="font-family:monospace;">
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" id="btn-prog-save">✓ desar</button>
+                        <button class="btn" id="btn-prog-cancel">cancel·lar</button>
+                    </div>
+                </div>
+
+                <div class="item-list" id="progressions-list"></div>
+
+                <div style="margin-top:16px;">
+                    <button class="btn btn-primary" id="btn-new-progression">+ nova progressió</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- TAB: Escales                                  -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-scales">
+            <section style="padding:32px 0 24px;">
+                <p class="section-label">Escales Personalitzades</p>
+                <p class="hint-text" style="margin-bottom:20px;">Defineix escales pròpies seleccionant els intervals (semitons des de la tònica). Seran assignables al mode teclat.</p>
+
+                <!-- Formulari creació -->
+                <div class="create-form" id="scale-form">
+                    <div class="form-row">
+                        <label>Nom</label>
+                        <input type="text" id="scale-name" placeholder="ex: Mixolídia fosca" maxlength="40">
+                    </div>
+                    <div class="form-row" style="flex-direction:column;align-items:flex-start;">
+                        <label style="margin-bottom:6px;">Intervals (semitò 0 = tònica)</label>
+                        <div class="interval-grid" id="interval-grid"></div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn btn-primary" id="btn-scale-save">✓ desar</button>
+                        <button class="btn" id="btn-scale-cancel">cancel·lar</button>
+                        <button class="btn" id="btn-scale-clear" style="margin-left:auto;">buidar</button>
+                    </div>
+                </div>
+
+                <div class="item-list" id="scales-list"></div>
+
+                <div style="margin-top:16px;">
+                    <button class="btn btn-primary" id="btn-new-scale">+ nova escala</button>
+                </div>
+            </section>
+        </div>
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- TAB: firmware (inserit AVANs del simulator)   -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-firmware">
+            <section style="padding:40px 0 24px;">
+                <p class="section-label">Instal·lador de Firmware</p>
+                <p class="hint-text" style="margin-bottom:24px;">
+                    Instal·la o actualitza el firmware TECLA al dispositiu Raspberry Pi Pico.
+                </p>
+
+                <!-- Estat sistema -->
+                <div class="fw-grid">
+
+                    <div class="fw-card">
+                        <p class="section-label" style="margin-bottom:12px;">Estat del Sistema</p>
+                        <ul class="fw-status-list">
+                            <li><span>Mode Bootloader</span><span class="fw-badge" id="fw-bootloader">No detectat</span>
+                            </li>
+                            <li><span>Volum CIRCUITPY</span><span class="fw-badge" id="fw-circuitpy">?</span></li>
+                            <li><span>CircuitPython</span><span class="fw-badge" id="fw-cpython">?</span></li>
+                            <li><span>Firmware TECLA</span><span class="fw-badge" id="fw-tecla">?</span></li>
+                        </ul>
+                        <button class="btn" id="btn-fw-refresh" style="width:100%;margin-top:12px;">refrescar
+                            estat</button>
+                    </div>
+
+                    <div class="fw-card">
+                        <p class="section-label" style="margin-bottom:12px;">Pas 1 — CircuitPython</p>
+                        <p class="hint-text" style="font-size:12px;margin-bottom:12px;">
+                            Cal estar en mode Bootloader (RPI-RP2).
+                            Prem el botó RESET mentre desconnectes i tornes a connectar el dispositiu.
+                        </p>
+                        <button class="btn" id="btn-flash-nuke" disabled style="width:100%;margin-bottom:8px;">Reset
+                            Total (Flash Nuke)</button>
+                        <button class="btn" id="btn-install-cp" disabled
+                            style="width:100%;margin-bottom:8px;">Instal·lar CircuitPython</button>
+                        <button class="btn" id="btn-fw-instructions" style="width:100%;">instruccions</button>
+                    </div>
+
+                    <div class="fw-card">
+                        <p class="section-label" style="margin-bottom:12px;">Pas 2 — Firmware TECLA</p>
+                        <p class="hint-text" style="font-size:12px;margin-bottom:12px;">
+                            Cal tenir CIRCUITPY muntat. Copia tots els fitxers del firmware al dispositiu.
+                        </p>
+                        <label class="fw-check">
+                            <input type="checkbox" id="fw-preserve" checked> Preservar configuració
+                        </label>
+                        <button class="btn btn-primary" id="btn-install-fw" disabled
+                            style="width:100%;margin-top:12px;margin-bottom:8px;">Instal·lar / Actualitzar</button>
+                        <button class="btn" id="btn-verify-fw" disabled style="width:100%;">verificar
+                            instal·lació</button>
+                    </div>
+
+                </div>
+
+                <!-- Progress bar -->
+                <div style="margin-top:20px;">
+                    <p class="section-label" style="margin-bottom:8px;">Progés</p>
+                    <progress id="fw-progress" value="0" max="100" style="width:100%;height:8px;"></progress>
+                    <p id="fw-progress-msg" style="font-size:12px;color:var(--fg-light);margin-top:6px;">—</p>
+                </div>
+
+            </section>
+        </div>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- TAB: Simulador                              -->
+        <!-- ═══════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-simulator">
+            <div id="sim-panel">
+
+                <!-- Toolbar -->
+                <div class="sim-toolbar">
+                    <span id="sim-status-dot"></span>
+                    <span class="sim-toolbar-label">mode</span>
+                    <select class="sim-select" id="sim-mode-select">
+                        <option value="">— selecciona un mode —</option>
+                    </select>
+                    <button class="sim-btn" id="btn-load-py" title="Carrega un fitxer .py des del disc">carrega
+                        .py</button>
+                    <button class="sim-btn sim-btn-green" id="btn-sim-start" disabled>inicia</button>
+                    <button class="sim-btn sim-btn-red" id="btn-sim-stop" disabled>atura</button>
+
+                    <span class="sim-toolbar-label" style="margin-left:8px;">midi</span>
+                    <select class="sim-select" id="sim-midi-select" style="flex:0.6;min-width:100px;">
+                        <option value="">sense MIDI</option>
+                    </select>
+                </div>
+
+                <!-- Loader Pyodide -->
+                <div id="pyodide-loader">
+                    <span class="spinner" style="border-top-color:#3498db;border-color:rgba(255,255,255,.1)"></span>
+                    <span id="loader-msg">Carregant Pyodide…</span>
+                </div>
+
+                <!-- Content: sidebar + device -->
+                <div class="sim-content">
+
+                    <!-- Sidebar: llista de modes -->
+                    <div class="sim-sidebar">
+                        <div class="sim-sidebar-title">modes</div>
+                        <div id="sim-modes-list"></div>
+                        <div class="sim-sidebar-hint">Clica un mode i després un botó (1–12) per assignar-lo</div>
+                    </div>
+
+                    <!-- Device -->
+                    <div class="sim-device">
+
+                        <!-- 4x4 buttons -->
+                        <div class="sim-buttons-grid" id="sim-buttons-grid">
+                            <!-- generats per JS -->
+                        </div>
+
+                        <!-- Potenciòmetres -->
+                        <div class="sim-pots">
+                            <div class="sim-pot-row">
+                                <span class="sim-pot-label">X</span>
+                                <input type="range" class="sim-pot-range" min="0" max="127" value="0" data-pot="0">
+                                <span class="sim-pot-val" id="pot-val-0">0</span>
+                            </div>
+                            <div class="sim-pot-row">
+                                <span class="sim-pot-label">Y</span>
+                                <input type="range" class="sim-pot-range" min="0" max="127" value="0" data-pot="1">
+                                <span class="sim-pot-val" id="pot-val-1">0</span>
+                            </div>
+                            <div class="sim-pot-row">
+                                <span class="sim-pot-label">Z</span>
+                                <input type="range" class="sim-pot-range" min="0" max="127" value="0" data-pot="2">
+                                <span class="sim-pot-val" id="pot-val-2">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- .sim-content -->
+
+                <!-- Log MIDI -->
+                <div class="sim-log-section">
+                    <div id="sim-log"><span class="slog-info">— log midi —</span></div>
+                </div>
+
+            </div><!-- #sim-panel -->
+        </div><!-- #tab-simulator -->
+
+        <!-- ═════════════════════════════════════════════ -->
+        <!-- TAB: Aparènça                              -->
+        <!-- ═════════════════════════════════════════════ -->
+        <div class="tab-panel" id="tab-aparenca">
+
+            <section>
+                <p class="section-label">Tema</p>
+                <p class="hint-text">Tria l'aparènça de l'aplicació. El tema es desa automàticament.</p>
+                <div class="theme-grid">
+                    <button class="theme-btn" data-theme="dark">
+                        <div class="theme-swatch"><span style="background:#111"></span><span style="background:#1e1e1e"></span><span style="background:#3498db"></span></div>
+                        Dark
+                    </button>
+                    <button class="theme-btn" data-theme="light">
+                        <div class="theme-swatch"><span style="background:#f0f0f0;border:1px solid #ccc"></span><span style="background:#fafafa;border:1px solid #ccc"></span><span style="background:#2563eb"></span></div>
+                        Light
+                    </button>
+                    <button class="theme-btn" data-theme="neon">
+                        <div class="theme-swatch"><span style="background:#070707"></span><span style="background:#0e0e0e"></span><span style="background:#00ff90"></span></div>
+                        Neon
+                    </button>
+                    <button class="theme-btn" data-theme="warm">
+                        <div class="theme-swatch"><span style="background:#1a1208"></span><span style="background:#221a0e"></span><span style="background:#f0a020"></span></div>
+                        Warm
+                    </button>
+                    <button class="theme-btn" data-theme="purple">
+                        <div class="theme-swatch"><span style="background:#0e0814"></span><span style="background:#150e1e"></span><span style="background:#a050e0"></span></div>
+                        Purple
+                    </button>
+                    <button class="theme-btn" data-theme="ocean">
+                        <div class="theme-swatch"><span style="background:#040d14"></span><span style="background:#071520"></span><span style="background:#00b4ff"></span></div>
+                        Ocean
+                    </button>
+                    <button class="theme-btn" data-theme="hc">
+                        <div class="theme-swatch"><span style="background:#000"></span><span style="background:#0a0a0a"></span><span style="background:#ffff00"></span></div>
+                        HC
+                    </button>
+                </div>
+            </section>
+
+        </div><!-- #tab-aparenca -->
+
+    </main>
+
+    <footer>
+        <span>tecla.app</span>
+        <span>v2.0</span>
+    </footer>
+
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <!-- JS modules                                                -->
+    <!-- ══════════════════════════════════════════════════════════ -->
+    <script type="module">
+        import { TECLADevice } from './js/tecla-device.js';
+        import { TECLAModes } from './js/tecla-modes.js';
+        import { TECLASimulator } from './js/tecla-simulator.js';
+        import { WebMidiManager } from './js/tecla-webmidi.js';
+
+        // ── Instàncies ──────────────────────────────────────────────
+        const device = new TECLADevice();
+        const webMidi = new WebMidiManager();
+        let modes = null;
+        let simulator = null;
+
+        // ── Elements ────────────────────────────────────────────────
+        const btnConnect = document.getElementById('btn-connect');
+        const btnDisconnect = document.getElementById('btn-disconnect');
+        const btnImport = document.getElementById('btn-import');
+        const btnRefresh = document.getElementById('btn-refresh');
+        const deviceBadge = document.getElementById('device-badge');
+        const deviceName = document.getElementById('device-name');
+        const modesList = document.getElementById('modes-list');
+        const modesCount = document.getElementById('modes-count');
+        const modesSection = document.getElementById('modes-section');
+        const logSection = document.getElementById('log-section');
+        const logOutput = document.getElementById('log-output');
+
+        // simulador
+        const simModeSelect = document.getElementById('sim-mode-select');
+        const simMidiSelect = document.getElementById('sim-midi-select');
+        const btnLoadPy = document.getElementById('btn-load-py');
+        const btnSimStart = document.getElementById('btn-sim-start');
+        const btnSimStop = document.getElementById('btn-sim-stop');
+        const simLog = document.getElementById('sim-log');
+        const simLoader = document.getElementById('pyodide-loader');
+        const loaderMsg = document.getElementById('loader-msg');
+        const simStatusDot = document.getElementById('sim-status-dot');
+
+        // Assignació de modes per botó
+        const buttonModes = new Array(12).fill(null); // { name, file }
+        let selectedSidebarMode = null;               // mode seleccionat al sidebar
+
+        // ── Tab navigation ───────────────────────────────────────────
+        let _builtKeys = false, _builtModes = false;
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+                const t = tab.dataset.tab;
+                if (t === 'simulator' && !simulator) initSimulator();
+                if (t === 'keys' && !_builtKeys) { buildKeysGrid(); _builtKeys = true; }
+                if (t === 'modes' && !_builtModes) { buildModesCheckList(); _builtModes = true; }
+            });
+        });
+        // Construir el grid de tecles en carregar (és la primera pestanya)
+        buildKeysGrid(); _builtKeys = true;
+
+        // ── Compatibilitat ───────────────────────────────────────────
+        if (!('showDirectoryPicker' in window)) {
+            const ns = document.getElementById('not-supported');
+            ns.classList.add('show');
+            ns.textContent = '⚠ El teu navegador no suporta File System Access API. Cal Chrome o Edge.';
+            btnConnect.disabled = true;
+        }
+
+        // ── Logs (dispositiu) ────────────────────────────────────────
+        function log(msg, type = 'info') {
+            logSection.classList.remove('hidden');
+            const line = document.createElement('span');
+            line.className = `log-${type}`;
+            const ts = new Date().toLocaleTimeString('ca', { hour12: false });
+            line.textContent = `[${ts}] ${msg}\n`;
+            logOutput.appendChild(line);
+            logOutput.scrollTop = logOutput.scrollHeight;
+        }
+
+        // ── Estat connexió ────────────────────────────────────────────
+        function setConnected(name) {
+            deviceBadge.classList.add('connected');
+            deviceName.textContent = name;
+            btnConnect.style.display = 'none';
+            btnDisconnect.style.display = '';
+            if (modesSection) modesSection.style.display = 'block';
+        }
+        function setDisconnected() {
+            deviceBadge.classList.remove('connected');
+            deviceName.textContent = 'desconnectat';
+            btnConnect.style.display = '';
+            btnDisconnect.style.display = 'none';
+            if (modesSection) modesSection.style.display = 'none';
+            if (modesList) modesList.innerHTML = '<div class="empty-state">Carregant…</div>';
+            if (modesCount) modesCount.textContent = '—';
+        }
+
+        // ── Renderitzar modes ────────────────────────────────────────
+        function renderModes(modesObj) {
+            if (modesList) modesList.innerHTML = '';
+            const entries = Object.entries(modesObj);
+            if (!entries.length) {
+                if (modesList) modesList.innerHTML = '<div class="empty-state">Cap mode al dispositiu.</div>';
+                if (modesCount) modesCount.textContent = '0 modes';
+                updateSimModeSelect(modesObj);
+                return;
+            }
+            entries.sort(([an, ai], [bn, bi]) => {
+                if (ai.source !== bi.source) return ai.source === 'original' ? -1 : 1;
+                return an.localeCompare(bn);
+            });
+            if (modesCount) modesCount.textContent = `${entries.length} mode${entries.length !== 1 ? 's' : ''}`;
+            for (const [name, info] of entries) {
+                const row = document.createElement('div');
+                row.className = 'mode-row fade-in';
+                const nameEl = document.createElement('span');
+                nameEl.className = 'mode-name';
+                nameEl.textContent = name;
+                const sourceEl = document.createElement('span');
+                sourceEl.className = `mode-source ${info.source}`;
+                sourceEl.textContent = info.source === 'custom' ? 'custom' : 'original';
+                row.appendChild(nameEl);
+                row.appendChild(sourceEl);
+                if (info.source === 'custom') {
+                    const del = document.createElement('button');
+                    del.className = 'btn btn-danger'; del.textContent = 'eliminar';
+                    del.addEventListener('click', () => onDeleteMode(name, info, row));
+                    row.appendChild(del);
+                }
+                if (modesList) modesList.appendChild(row);
+            }
+            updateSimModeSelect(modesObj);
+        }
+
+        async function loadModes() {
+            if (modesList) modesList.innerHTML = '<div class="empty-state"><span class="spinner"></span></div>';
+            try {
+                const m = await modes.getInstalledModes();
+                renderModes(m);
+            } catch (e) {
+                if (modesList) modesList.innerHTML = '<div class="empty-state">Error carregant els modes.</div>';
+                log(`Error llegint modes: ${e.message}`, 'err');
+            }
+        }
+
+        // ── Connectar dispositiu ──────────────────────────────────────
+        btnConnect.addEventListener('click', async () => {
+            btnConnect.disabled = true;
+            btnConnect.innerHTML = '<span class="spinner"></span> connectant…';
+            const result = await device.connect();
+            if (result.success) {
+                modes = new TECLAModes(device);
+                setConnected(result.name);
+                log(`Dispositiu connectat: ${result.name}`, 'ok');
+                await loadModes();
+                // Actualitzar estat del firmware en segon pla
+                setTimeout(() => _fwRefresh?.(), 500);
+            } else if (!result.aborted) {
+                log(`Error: ${result.error}`, 'err');
+            }
+            btnConnect.disabled = false;
+            btnConnect.textContent = 'connecta dispositiu';
+        });
+
+        btnDisconnect.addEventListener('click', () => {
+            device.disconnect(); modes = null; setDisconnected();
+            log('Dispositiu desconnectat.', 'info');
+        });
+        btnRefresh?.addEventListener('click', async () => {
+            if (!device.isConnected()) return;
+            if (btnRefresh) btnRefresh.disabled = true;
+            await loadModes();
+            if (btnRefresh) btnRefresh.disabled = false;
+            log('Llista actualitzada.', 'info');
+        });
+
+        // ── Importar mode ─────────────────────────────────────────────
+        btnImport.addEventListener('click', () => {
+            if (!device.isConnected()) return;
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = '.py'; input.style.display = 'none';
+            document.body.appendChild(input);
+            input.addEventListener('change', async () => {
+                const file = input.files[0];
+                if (!file) { input.remove(); return; }
+                btnImport.disabled = true;
+                btnImport.innerHTML = '<span class="spinner"></span> important…';
+                try {
+                    const content = await file.text();
+                    const result = await modes.installMode(content, file.name);
+                    if (result.success) {
+                        log(`✓ Mode '${result.modeName}' instal·lat.`, 'ok');
+                        await loadModes();
+                    } else {
+                        log(`✗ ${result.error}`, 'err');
+                    }
+                } catch (e) {
+                    log(`✗ Error: ${e.message}`, 'err');
+                } finally {
+                    btnImport.disabled = false;
+                    btnImport.textContent = '+ importar mode';
+                    input.remove();
+                }
+            });
+            input.click();
+        });
+
+        // ── Eliminar mode ─────────────────────────────────────────────
+        async function onDeleteMode(name, info, rowEl) {
+            if (!confirm(`Eliminar el mode '${name}'?\n\nAquesta acció no es pot desfer.`)) return;
+            rowEl.classList.add('removing');
+            const result = await modes.removeMode(name, info);
+            if (result.success) {
+                log(`✓ Mode '${name}' eliminat.`, 'ok');
+                rowEl.style.transition = 'opacity .25s, transform .25s';
+                rowEl.style.opacity = '0'; rowEl.style.transform = 'translateX(-8px)';
+                setTimeout(() => loadModes(), 280);
+            } else {
+                rowEl.classList.remove('removing');
+                log(`✗ ${result.error}`, 'err');
+            }
+        }
+
+
+        // ══════════════════════════════════════════════════════════════
+        // TECLES — Grid 4x4 configurable
+        // ══════════════════════════════════════════════════════════════
+
+        let _modesIndex = [];  // Dades de modes_index.json
+
+        async function _loadModesIndex() {
+            if (_modesIndex.length) return _modesIndex;
+            try {
+                const res = await fetch('/py/modes_index.json');
+                const data = await res.json();
+                _modesIndex = data.modes || [];
+            } catch { }
+            return _modesIndex;
+        }
+
+        // ── Configuració de tecles (localStorage) ──────────────────────────
+        function _loadKeysConfig() {
+            try {
+                return JSON.parse(localStorage.getItem('tecla-keys-config') || 'null');
+            } catch { return null; }
+        }
+        function _saveKeysConfig(cfg) {
+            localStorage.setItem('tecla-keys-config', JSON.stringify(cfg));
+        }
+        function _defaultKeysConfig() {
+            return {
+                banks: [
+                    { name: 'Capa 1', modes: Array(12).fill('') },
+                    { name: 'Capa 2', modes: Array(12).fill('') }
+                ],
+                currentBank: 0
+            };
+        }
+
+        let _keysConfig = _loadKeysConfig() || _defaultKeysConfig();
+
+        function _syncBankSelect() {
+            const sel = document.getElementById('bank-select');
+            if (!sel) return;
+            sel.innerHTML = _keysConfig.banks
+                .map((b, i) => `<option value="${i}">${b.name}</option>`).join('');
+            sel.value = _keysConfig.currentBank;
+        }
+
+        function _loadBankIntoGrid(bankIdx) {
+            const bank = _keysConfig.banks[bankIdx];
+            if (!bank) return;
+            for (let i = 0; i < 12; i++) {
+                const sel = document.getElementById(`key-sel-${i}`);
+                if (sel) sel.value = bank.modes[i] || '';
+            }
+        }
+
+        function _readGridIntoBank(bankIdx) {
+            if (!_keysConfig.banks[bankIdx]) return;
+            for (let i = 0; i < 12; i++) {
+                const sel = document.getElementById(`key-sel-${i}`);
+                _keysConfig.banks[bankIdx].modes[i] = sel ? sel.value : '';
+            }
+        }
+
+        async function buildKeysGrid() {
+            const grid = document.getElementById('keys-grid');
+            if (!grid) return;
+            const modes = await _loadModesIndex();
+            const optionsHTML = ['<option value="">— sense assignar —</option>',
+                ...modes.map(m => `<option value="${m.file}">${m.name}</option>`)
+            ].join('');
+
+            const labels = [
+                '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12',
+                'Mode Teclat', 'Efecte / Octava−', 'Efecte / Octava+', 'Aturar So'
+            ];
+            const specials = [12, 13, 14, 15];
+
+            grid.innerHTML = '<div class="keys-grid">' +
+                Array.from({ length: 16 }, (_, i) => {
+                    const isSpec = specials.includes(i);
+                    return `
+                    <div class="key-cell ${isSpec ? 'special' : ''}">
+                        <p class="key-cell-label">Tecla ${labels[i]}</p>
+                        ${isSpec
+                            ? `<p style="font-size:11px;color:var(--fg-light);">${i === 12 ? 'Canvi de capa' : i === 15 ? 'Atura so' : 'Efecte temporal'}</p>`
+                            : `<select title="Mode tecla ${i + 1}" id="key-sel-${i}">${optionsHTML}</select>`
+                        }
+                    </div>`;
+                }).join('') + '</div>';
+
+            // Carregar valors desats
+            _syncBankSelect();
+            _loadBankIntoGrid(_keysConfig.currentBank);
+
+            // Canvi de capa
+            document.getElementById('bank-select')?.addEventListener('change', e => {
+                _readGridIntoBank(_keysConfig.currentBank);
+                _keysConfig.currentBank = +e.target.value;
+                _loadBankIntoGrid(_keysConfig.currentBank);
+            });
+
+            // Nova capa
+            document.getElementById('btn-new-bank')?.addEventListener('click', () => {
+                const n = _keysConfig.banks.length + 1;
+                _keysConfig.banks.push({ name: `Capa ${n}`, modes: Array(12).fill('') });
+                _syncBankSelect();
+                // Canviar a la nova capa
+                _readGridIntoBank(_keysConfig.currentBank);
+                _keysConfig.currentBank = _keysConfig.banks.length - 1;
+                document.getElementById('bank-select').value = _keysConfig.currentBank;
+                _loadBankIntoGrid(_keysConfig.currentBank);
+                _saveKeysConfig(_keysConfig);
+            });
+
+            // Eliminar capa
+            document.getElementById('btn-del-bank')?.addEventListener('click', () => {
+                if (_keysConfig.banks.length <= 1) { log('Ha d\'haver-hi com a mínim una capa.', 'warn'); return; }
+                _keysConfig.banks.splice(_keysConfig.currentBank, 1);
+                _keysConfig.currentBank = Math.min(_keysConfig.currentBank, _keysConfig.banks.length - 1);
+                _syncBankSelect();
+                _loadBankIntoGrid(_keysConfig.currentBank);
+                _saveKeysConfig(_keysConfig);
+                log('Capa eliminada.', 'ok');
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // MODES — Checklist activar/desactivar modes
+        // ══════════════════════════════════════════════════════════════
+
+        async function buildModesCheckList() {
+            const container = document.getElementById('modes-list-check');
+            if (!container) return;
+            const modes = await _loadModesIndex();
+            if (!modes.length) {
+                container.innerHTML = '<div class="empty-state">No s\'han pogut carregar els modes.</div>';
+                return;
+            }
+            container.innerHTML = '<div class="modes-checklist">' +
+                modes.map((m, i) => `
+                    <label class="modes-checklist-row">
+                        <input type="checkbox" id="mode-chk-${i}" value="${m.file}" checked>
+                        <span>${m.name}</span>
+                        <span style="font-size:11px;color:var(--fg-light);margin-left:auto;">${m.file}</span>
+                    </label>`).join('') +
+                '</div>';
+        }
+
+        // ── Guardar configuració de tecles ─────────────────────────────────
+        document.getElementById('btn-save-keys')?.addEventListener('click', async () => {
+            _readGridIntoBank(_keysConfig.currentBank);
+            _saveKeysConfig(_keysConfig);
+            const bank = _keysConfig.banks[_keysConfig.currentBank];
+            const assigned = bank.modes.filter(Boolean).length;
+            log(`Configuració desada: ${assigned} tecles assignades a '${bank.name}'.`, 'ok');
+
+            // Sincronitzar al dispositiu si està connectat
+            if (device.isConnected()) {
+                try {
+                    const cfg = {
+                        banks: _keysConfig.banks.map(b => ({ name: b.name, modes: b.modes })),
+                        current_bank: _keysConfig.currentBank
+                    };
+                    await device.writeFile('tecla_web_config.json', JSON.stringify(cfg, null, 2));
+                    log('Sincronitzat al dispositiu (✅ tecla_web_config.json).', 'ok');
+                } catch (e) {
+                    log(`Error sincronitzant: ${e.message}`, 'warn');
+                }
+            }
+        });
+
+        document.getElementById('btn-save-modes')?.addEventListener('click', () => {
+            log('Modes guardats (cal connexió per sincronitzar al dispositiu)', 'ok');
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // FIRMWARE TAB
+        // ══════════════════════════════════════════════════════════════
+
+        function _fwBadge(id, text, ok) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text;
+            el.style.color = ok === true ? 'var(--green)' : ok === false ? 'var(--red)' : 'var(--fg-light)';
+        }
+
+        function _fwMsg(msg) {
+            const el = document.getElementById('fw-progress-msg');
+            if (el) el.textContent = msg;
+        }
+
+        function _fwProgress(val) {
+            const el = document.getElementById('fw-progress');
+            if (el) el.value = val;
+        }
+
+        async function _fwRefresh() {
+            _fwMsg('Comprovant dispositiu…');
+            _fwProgress(0);
+
+            if (!device.isConnected()) {
+                _fwBadge('fw-bootloader', 'No detectat', false);
+                _fwBadge('fw-circuitpy',  'No connectat', false);
+                _fwBadge('fw-cpython',    '?', null);
+                _fwBadge('fw-tecla',      '?', null);
+                _fwMsg('Connecta el dispositiu a la pestanya "Tecles" primer.');
+                return;
+            }
+
+            _fwBadge('fw-bootloader', 'No (mode normal)', null);
+            _fwBadge('fw-circuitpy',  device.name || 'Muntat', true);
+            _fwProgress(30);
+
+            // Llegir boot_out.txt per la versió de CircuitPython
+            let cpVersion = '?';
+            try {
+                const bootOut = await device.readFile('boot_out.txt');
+                const m = bootOut.match(/CircuitPython\s+([\d.]+[^\s]*)/i);
+                if (m) cpVersion = m[1];
+            } catch { cpVersion = 'no trobat'; }
+            _fwBadge('fw-cpython', cpVersion, cpVersion !== 'no trobat' && cpVersion !== '?');
+            _fwProgress(60);
+
+            // Comprovar si el firmware TECLA és instal·lat (main.py + modes/)
+            let teclaStatus = 'No instal·lat';
+            let teclaOk = false;
+            try {
+                const hasMain  = await device.fileExists('main.py');
+                const hasModes = (await device.listDir('modes')).length > 0;
+                if (hasMain && hasModes) {
+                    // Intentar llegir versió
+                    try {
+                        const ver = await device.readFile('tecla_version.txt');
+                        teclaStatus = ver.trim() || 'Instal·lat';
+                    } catch {
+                        teclaStatus = 'Instal·lat (versió desconeguda)';
+                    }
+                    teclaOk = true;
+                } else if (hasMain) {
+                    teclaStatus = 'main.py present, modes no trobats';
+                }
+            } catch { teclaStatus = 'Error llegint dispositiu'; }
+            _fwBadge('fw-tecla', teclaStatus, teclaOk);
+            _fwProgress(100);
+
+            // Habilitar botons d'instal·lació
+            document.getElementById('btn-install-fw').disabled = false;
+            document.getElementById('btn-verify-fw').disabled  = false;
+            _fwMsg(teclaOk ? '✓ Dispositiu TECLA detectat correctament.' : 'Dispositiu connectat. Firmware TECLA no instal·lat.');
+        }
+
+        document.getElementById('btn-fw-refresh')?.addEventListener('click', _fwRefresh);
+
+        // ── Instal·lar / Actualitzar firmware TECLA ───────────────────
+        document.getElementById('btn-install-fw')?.addEventListener('click', async () => {
+            if (!device.isConnected()) { alert('Connecta el dispositiu primer.'); return; }
+            if (!confirm('Instal·lar/actualitzar el firmware TECLA al dispositiu?\n\n' +
+                '• Es copiaran tots els fitxers Python de modes\n' +
+                '• La configuració existent es preservarà si "Preservar configuració" està marcat')) return;
+
+            const preserve = document.getElementById('fw-preserve')?.checked ?? true;
+            const progress = document.getElementById('fw-progress');
+            _fwMsg('Llegint llista de modes…');
+            _fwProgress(0);
+
+            try {
+                // Llegir modes_index.json per saber quins fitxers copiar
+                const indexRes = await fetch('/py/modes_index.json');
+                const modesIndex = await indexRes.json();
+                const files = [
+                    { src: '/py/base_mode.py', dst: 'modes/base_mode.py' },
+                    ...modesIndex.map(m => ({ src: `/py/modes/${m.file}`, dst: `modes/${m.file}` }))
+                ];
+
+                let done = 0;
+                for (const f of files) {
+                    _fwMsg(`Copiant ${f.dst}…`);
+                    try {
+                        const res = await fetch(f.src);
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        const code = await res.text();
+                        await device.writeFile(f.dst, code);
+                    } catch (e) {
+                        console.warn(`Skipping ${f.src}: ${e.message}`);
+                    }
+                    done++;
+                    _fwProgress(Math.round((done / files.length) * 90));
+                }
+
+                // Escriure versió
+                await device.writeFile('tecla_version.txt', 'TECLA v2.0 (web install)');
+                _fwProgress(100);
+                _fwMsg(`✓ ${done} fitxers instal·lats correctament.`);
+                log(`Firmware TECLA instal·lat: ${done} fitxers copiats.`, 'ok');
+                await _fwRefresh();
+
+            } catch (e) {
+                _fwMsg(`Error: ${e.message}`);
+                log(`Error instal·lant firmware: ${e.message}`, 'err');
+            }
+        });
+
+        // ── Verificar instal·lació ─────────────────────────────────────
+        document.getElementById('btn-verify-fw')?.addEventListener('click', async () => {
+            if (!device.isConnected()) { alert('Connecta el dispositiu primer.'); return; }
+            _fwMsg('Verificant…');
+            _fwProgress(0);
+            try {
+                const indexRes = await fetch('/py/modes_index.json');
+                const modesIndex = await indexRes.json();
+                let ok = 0, missing = [];
+                const toCheck = [
+                    { dst: 'modes/base_mode.py', name: 'base_mode.py' },
+                    ...modesIndex.map(m => ({ dst: `modes/${m.file}`, name: m.file }))
+                ];
+                for (let i = 0; i < toCheck.length; i++) {
+                    const exists = await device.fileExists(toCheck[i].dst);
+                    if (exists) ok++;
+                    else missing.push(toCheck[i].name);
+                    _fwProgress(Math.round(((i + 1) / toCheck.length) * 100));
+                }
+                const msg = missing.length === 0
+                    ? `✓ Tots els fitxers presents (${ok}/${toCheck.length})`
+                    : `⚠ Falten ${missing.length} fitxers: ${missing.slice(0, 5).join(', ')}${missing.length > 5 ? '…' : ''}`;
+                _fwMsg(msg);
+                log(msg, missing.length === 0 ? 'ok' : 'warn');
+            } catch (e) {
+                _fwMsg(`Error: ${e.message}`);
+            }
+        });
+
+        // ── Instruccions ──────────────────────────────────────────────
+        document.getElementById('btn-fw-instructions')?.addEventListener('click', () => {
+            alert(
+                'COM INSTAL·LAR EL FIRMWARE TECLA\n' +
+                '─────────────────────────────────\n' +
+                '1. Connecta el TECLA per USB-C\n' +
+                '2. Obre la pestanya "Tecles" i clica "connecta dispositiu"\n' +
+                '   → Selecciona el volum CIRCUITPY\n' +
+                '3. Torna a la pestanya "Firmware"\n' +
+                '4. Clica "refrescar estat" per verificar la connexió\n' +
+                '5. Clica "Instal·lar / Actualitzar"\n\n' +
+                'SI EL DISPOSITIU NO APAREIX COM CIRCUITPY:\n' +
+                '1. Prem el botó BOOTSEL del Pico mentre el connectes\n' +
+                '   → apareix com "RPI-RP2"\n' +
+                '2. Arrossega el fitxer .uf2 de CircuitPython al dispositiu\n' +
+                '3. Espera que es reiniciï com "CIRCUITPY"'
+            );
+        });
+
+        // ══════════════════════════════════════════════════════════════
+        // SIMULADOR
+        // ══════════════════════════════════════════════════════════════
+
+
+        // ── Construir grid de botons ──────────────────────────────────
+        function buildButtonGrid() {
+            const grid = document.getElementById('sim-buttons-grid');
+            const labels = [
+                '1','2','3','4','5','6','7','8','9','10','11','12',
+                'MODE\nKEYBD', 'FX 1', 'FX 2', 'STOP'
+            ];
+            const classes = [
+                ...Array(12).fill(''),
+                'key-keybrd', 'key-fx', 'key-fx', 'key-stop'
+            ];
+            for (let i = 0; i < 16; i++) {
+                const key = document.createElement('div');
+                key.className = `sim-key ${classes[i]}`;
+                key.dataset.idx = i;
+                // Botons 1-12: afegir label de mode assignat
+                if (i < 12) {
+                    key.innerHTML = `<span class="key-num">${i + 1}</span><span class="key-mode-label" id="key-ml-${i}">—</span>`;
+                } else {
+                    key.innerHTML = `<span class="key-num"></span>${labels[i].replace('\n', '<br>')}`;
+                }
+
+                // Mouse events
+                key.addEventListener('mousedown', e => { e.preventDefault(); onKeyDown(i, key); });
+                key.addEventListener('mouseup', () => onKeyUp(i, key));
+                key.addEventListener('mouseleave', () => { if (key.classList.contains('pressed')) onKeyUp(i, key); });
+                // Touch events
+                key.addEventListener('touchstart', e => { e.preventDefault(); onKeyDown(i, key); }, { passive: false });
+                key.addEventListener('touchend', e => { e.preventDefault(); onKeyUp(i, key); }, { passive: false });
+                // Clic dret en botons 1-12: elimina assignació
+                if (i < 12) {
+                    key.addEventListener('contextmenu', e => {
+                        e.preventDefault();
+                        buttonModes[i] = null;
+                        updateButtonLabel(i, null);
+                        simlog(`Botó ${i + 1}: assignació eliminada`, 'info');
+                    });
+                }
+
+                grid.appendChild(key);
+            }
+        }
+
+        function updateButtonLabel(idx, modeInfo) {
+            const label = document.getElementById(`key-ml-${idx}`);
+            const key = document.querySelector(`.sim-key[data-idx="${idx}"]`);
+            if (!label || !key) return;
+            if (modeInfo) {
+                label.textContent = modeInfo.name.replace(/^mode_/i, '').replace(/_/g, ' ').substring(0, 10);
+                key.classList.add('has-mode');
+            } else {
+                label.textContent = '\u2014';
+                key.classList.remove('has-mode', 'sim-active-mode');
+            }
+        }
+
+        function onKeyDown(idx, el) {
+            // Mode d'assignació: mode seleccionat al sidebar + botó 1-12 + sim no en exec
+            if (selectedSidebarMode && idx < 12 && !simulator?.isRunning) {
+                buttonModes[idx] = { ...selectedSidebarMode };
+                updateButtonLabel(idx, buttonModes[idx]);
+                simlog(`'${selectedSidebarMode.name}' → botó ${idx + 1}`, 'ok');
+                // Deselecciona per poder assignar el següent mode a un altre botó
+                selectedSidebarMode = null;
+                document.querySelectorAll('.sim-mode-item').forEach(i => i.classList.remove('selected'));
+                return;
+            }
+
+            el.classList.add('pressed');
+
+            // Botó STOP (15): atura loop + All Notes Off
+            if (idx === 15) {
+                webMidi.allNotesOff();
+                if (simulator?.isRunning) {
+                    simulator.stopLoop();
+                    simStatusDot.className = 'ready';
+                    btnSimStart.disabled = false;
+                    btnSimStop.disabled = true;
+                    document.querySelectorAll('.sim-key').forEach(k => k.classList.remove('sim-active-mode'));
+                    simlog('Aturat. All Notes Off.', 'ok');
+                }
+                return;
+            }
+
+            // Botó 1-12 amb mode assignat: carrega i arranca (o commuta si ja corre)
+            if (idx < 12 && buttonModes[idx] && simulator?.isReady) {
+                switchToButtonMode(idx);
+                return;
+            }
+
+            // Altres botons: envia l'estat al Python
+            simulator?.pressButton(idx);
+        }
+
+        function onKeyUp(idx, el) {
+            el.classList.remove('pressed');
+            simulator?.releaseButton(idx);
+        }
+
+        async function switchToButtonMode(idx) {
+            const modeInfo = buttonModes[idx];
+            if (!modeInfo || !simulator?.isReady) return;
+            try {
+                const res = await fetch(`/py/modes/${modeInfo.file}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const code = await res.text();
+                webMidi.allNotesOff();
+                await simulator.loadMode(code, modeInfo.file);
+                // Arranca el loop si no estava en marxa
+                if (!simulator.isRunning) {
+                    simulator.startLoop();
+                    simStatusDot.className = 'running';
+                    btnSimStart.disabled = true;
+                    btnSimStop.disabled = false;
+                }
+                simlog(`▶ ${modeInfo.name} (botó ${idx + 1})`, 'ok');
+                document.querySelectorAll('.sim-key').forEach(k => k.classList.remove('sim-active-mode'));
+                document.querySelector(`.sim-key[data-idx="${idx}"]`)?.classList.add('sim-active-mode');
+            } catch (e) {
+                simlog(`Error carregant mode: ${e.message}`, 'err');
+            }
+        }
+
+        // ── Log simulador ─────────────────────────────────────────────
+        function simlog(msg, type = 'info') {
+            const line = document.createElement('span');
+            line.className = `slog-${type}`;
+            const ts = new Date().toLocaleTimeString('ca', { hour12: false });
+            line.textContent = `[${ts}] ${msg}\n`;
+            // Eliminar placeholder inicial
+            if (simLog.querySelector('.slog-info')?.textContent === '— log midi —') {
+                simLog.innerHTML = '';
+            }
+            simLog.appendChild(line);
+            simLog.scrollTop = simLog.scrollHeight;
+        }
+
+        // ── Inicialitzar simulador (Pyodide + Web MIDI) ───────────────
+        async function initSimulator() {
+            buildButtonGrid();
+
+            // Carregar índex de modes bundejats
+            loadBuiltinModes();
+
+            // Web MIDI
+            const midiResult = await webMidi.init();
+            if (midiResult.success) {
+                updateMidiSelect(webMidi.outputs);
+                webMidi.onUpdate = (outputs) => updateMidiSelect(outputs);
+                webMidi.onLog = (type, a, b, ch) => {
+                    const labels = { note_on: 'NoteOn', note_off: 'NoteOff', control_change: 'CC', pitchwheel: 'PitchBend' };
+                    const note = (type === 'note_on' || type === 'note_off') ? ` note=${a} vel=${b}` : ` ${a}=${b}`;
+                    simlog(`${labels[type] || type}${note} ch=${ch}`, 'midi');
+                };
+                simlog(`MIDI disponible: ${webMidi.outputs.length} port(s)`, 'ok');
+            } else {
+                simlog(`MIDI no disponible: ${midiResult.error}`, 'warn');
+            }
+
+            // Pyodide
+            simulator = new TECLASimulator(webMidi, (msg, type) => simlog(msg, type));
+            simLoader.classList.add('show');
+            try {
+                await simulator.initPyodide((progress) => {
+                    loaderMsg.textContent = progress;
+                });
+                simLoader.classList.remove('show');
+                simStatusDot.className = 'ready';
+                btnSimStart.disabled = false;
+                btnLoadPy.disabled = false;
+            } catch (e) {
+                simLoader.classList.remove('show');
+                simlog(`Error inicialitzant Pyodide: ${e.message}`, 'err');
+            }
+
+            // Pots
+            document.querySelectorAll('.sim-pot-range').forEach(range => {
+                range.addEventListener('input', () => {
+                    const idx = +range.dataset.pot;
+                    const val = +range.value;
+                    simulator?.setPot(idx, val);
+                    document.getElementById(`pot-val-${idx}`).textContent = val;
+                });
+            });
+        }
+
+        // ── Modes bundejats (modes_index.json) ────────────────────────
+        async function loadBuiltinModes() {
+            try {
+                const res = await fetch('/py/modes_index.json');
+                const data = await res.json();
+                // Neteja el selector i afegeix grup de modes integrats
+                while (simModeSelect.options.length > 1) simModeSelect.remove(1);
+                const grp = document.createElement('optgroup');
+                grp.label = 'Modes integrats';
+
+                // Omple també el sidebar
+                const sidebarList = document.getElementById('sim-modes-list');
+                sidebarList.innerHTML = '';
+
+                for (const { name, file } of data.modes) {
+                    // dropdown
+                    const opt = document.createElement('option');
+                    opt.value = file;
+                    opt.dataset.source = 'builtin';
+                    opt.textContent = name;
+                    grp.appendChild(opt);
+
+                    // sidebar
+                    const item = document.createElement('div');
+                    item.className = 'sim-mode-item';
+                    item.textContent = name;
+                    item.title = name;
+                    item.dataset.file = file;
+                    item.dataset.name = name;
+                    item.addEventListener('click', () => onSidebarModeClick(name, file, item));
+                    sidebarList.appendChild(item);
+                }
+                simModeSelect.appendChild(grp);
+                simlog(`${data.modes.length} modes carregats`, 'ok');
+            } catch (e) {
+                simlog("No s'ha pogut carregar modes_index.json", 'warn');
+            }
+        }
+
+        function onSidebarModeClick(name, file, el) {
+            selectedSidebarMode = { name, file };
+            document.querySelectorAll('.sim-mode-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+
+            if (simulator?.isRunning) {
+                // Si està en execució: carregar el mode immediatament
+                (async () => {
+                    try {
+                        const res = await fetch(`/py/modes/${file}`);
+                        const code = await res.text();
+                        webMidi.allNotesOff();
+                        await simulator.loadMode(code, file);
+                        simlog(`▶ ${name}`, 'ok');
+                        document.querySelectorAll('.sim-key').forEach(k => k.classList.remove('sim-active-mode'));
+                    } catch (e) { simlog(`Error: ${e.message}`, 'err'); }
+                })();
+            } else {
+                simlog(`'${name}' seleccionat — clica un botó 1–12 per assignar-lo`, 'info');
+            }
+        }
+
+        // ── Selector de modes (dispositiu connectat) ───────────────────
+        function updateSimModeSelect(modesObj) {
+            // Eliminar grup anterior del dispositiu si existeix
+            const existing = simModeSelect.querySelector('optgroup[label="Dispositiu (CIRCUITPY)"]');
+            if (existing) existing.remove();
+
+            const entries = Object.entries(modesObj);
+            if (!entries.length) return;
+            const grp = document.createElement('optgroup');
+            grp.label = 'Dispositiu (CIRCUITPY)';
+            for (const [name, info] of entries) {
+                const opt = document.createElement('option');
+                opt.value = info.file_name || name;
+                opt.dataset.source = 'device';
+                opt.textContent = `${name} ★`;
+                grp.appendChild(opt);
+            }
+            simModeSelect.appendChild(grp);
+        }
+
+        // L'usuari selecciona un mode del desplegable
+        simModeSelect.addEventListener('change', async () => {
+            const sel = simModeSelect.options[simModeSelect.selectedIndex];
+            if (!sel || !sel.value || !simulator?.isReady) return;
+            const source = sel.dataset.source;
+
+            try {
+                let code;
+                if (source === 'device' && device.isConnected()) {
+                    // Mode del CIRCUITPY
+                    code = await device.readFile(`modes/${sel.value}.py`);
+                } else {
+                    // Mode bundejat — fetch des del servidor
+                    const res = await fetch(`/py/modes/${sel.value}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    code = await res.text();
+                }
+                await simulator.loadMode(code, sel.value);
+                btnSimStart.disabled = false;
+            } catch (e) {
+                simlog(`Error carregant el mode: ${e.message}`, 'err');
+            }
+        });
+
+        // L'usuari carrega un fitxer .py local
+        btnLoadPy.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = '.py'; input.style.display = 'none';
+            document.body.appendChild(input);
+            input.addEventListener('change', async () => {
+                const file = input.files[0];
+                if (!file) { input.remove(); return; }
+                try {
+                    const code = await file.text();
+                    await simulator.loadMode(code, file.name);
+                    btnSimStart.disabled = false;
+                } catch (e) {
+                    simlog(`Error: ${e.message}`, 'err');
+                }
+                input.remove();
+            });
+            input.click();
+        });
+
+        // ── Start / Stop ──────────────────────────────────────────────
+        btnSimStart.addEventListener('click', () => {
+            if (!simulator) return;
+            simulator.startLoop();
+            simStatusDot.className = 'running';
+            btnSimStart.disabled = true;
+            btnSimStop.disabled = false;
+        });
+        btnSimStop.addEventListener('click', () => {
+            if (!simulator) return;
+            simulator.stopLoop();
+            webMidi.allNotesOff();
+            simStatusDot.className = 'ready';
+            btnSimStart.disabled = false;
+            btnSimStop.disabled = true;
+            document.querySelectorAll('.sim-key').forEach(k => k.classList.remove('sim-active-mode'));
+            simlog('Aturat. All Notes Off.', 'ok');
+        });
+
+        // ── MIDI port select ──────────────────────────────────────────
+        simMidiSelect.addEventListener('change', () => {
+            webMidi.selectOutput(simMidiSelect.value || null);
+            if (simMidiSelect.value) {
+                const name = simMidiSelect.options[simMidiSelect.selectedIndex].textContent;
+                simlog(`Port MIDI: ${name}`, 'ok');
+            }
+        });
+
+        function updateMidiSelect(outputs) {
+            const current = simMidiSelect.value;
+            while (simMidiSelect.options.length > 1) simMidiSelect.remove(1);
+            for (const { id, name } of outputs) {
+                const opt = document.createElement('option');
+                opt.value = id; opt.textContent = name;
+                simMidiSelect.appendChild(opt);
+            }
+            if (current) simMidiSelect.value = current;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // PROGRESSIONS
+        // ══════════════════════════════════════════════════════════════
+
+        let _progressions = (() => { try { return JSON.parse(localStorage.getItem('tecla-progressions') || '[]'); } catch { return []; } })();
+
+        function _saveProgressions() { localStorage.setItem('tecla-progressions', JSON.stringify(_progressions)); }
+
+        function _renderProgressions() {
+            const list = document.getElementById('progressions-list');
+            if (!list) return;
+            if (!_progressions.length) {
+                list.innerHTML = '<div class="empty-state">Cap progressió creada encara.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            _progressions.forEach((p, i) => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="item-card-body">
+                        <div class="item-card-name">${p.name}</div>
+                        <div class="chip-row">${p.chords.map(c => `<span class="chip">${c}</span>`).join('')}</div>
+                        <div class="item-card-meta" style="margin-top:6px;">${p.chords.length} acords</div>
+                    </div>
+                    <button class="item-del-btn" title="Eliminar" data-idx="${i}">&times;</button>`;
+                card.querySelector('.item-del-btn').addEventListener('click', () => {
+                    _progressions.splice(i, 1);
+                    _saveProgressions();
+                    _renderProgressions();
+                });
+                list.appendChild(card);
+            });
+        }
+
+        document.getElementById('btn-new-progression')?.addEventListener('click', () => {
+            const form = document.getElementById('prog-form');
+            form.classList.toggle('open');
+            if (form.classList.contains('open')) document.getElementById('prog-name').focus();
+        });
+
+        document.getElementById('btn-prog-cancel')?.addEventListener('click', () => {
+            document.getElementById('prog-form').classList.remove('open');
+            document.getElementById('prog-name').value = '';
+            document.getElementById('prog-chords').value = '';
+        });
+
+        document.getElementById('btn-prog-save')?.addEventListener('click', () => {
+            const name = document.getElementById('prog-name').value.trim();
+            const chordsRaw = document.getElementById('prog-chords').value.trim();
+            if (!name || !chordsRaw) { alert('Omple el nom i els acords.'); return; }
+            const chords = chordsRaw.split(/\s+/).filter(Boolean);
+            _progressions.push({ id: Date.now().toString(), name, chords });
+            _saveProgressions();
+            _renderProgressions();
+            document.getElementById('prog-form').classList.remove('open');
+            document.getElementById('prog-name').value = '';
+            document.getElementById('prog-chords').value = '';
+        });
+
+        _renderProgressions();
+
+        // ══════════════════════════════════════════════════════════════
+        // ESCALES PERSONALITZADES
+        // ══════════════════════════════════════════════════════════════
+
+        const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+        let _customScales = (() => { try { return JSON.parse(localStorage.getItem('tecla-custom-scales') || '[]'); } catch { return []; } })();
+        let _scaleIntervals = new Set([0]); // tònica sempre activa
+
+        function _saveCustomScales() { localStorage.setItem('tecla-custom-scales', JSON.stringify(_customScales)); }
+
+        function _buildIntervalGrid() {
+            const grid = document.getElementById('interval-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            for (let i = 0; i < 12; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'interval-btn' + (_scaleIntervals.has(i) ? ' on' : '');
+                btn.type = 'button';
+                btn.innerHTML = `<span>${i}</span><span class="note-name">${NOTE_NAMES[i]}</span>`;
+                btn.addEventListener('click', () => {
+                    if (i === 0) return; // tònica sempre
+                    if (_scaleIntervals.has(i)) _scaleIntervals.delete(i);
+                    else _scaleIntervals.add(i);
+                    btn.classList.toggle('on', _scaleIntervals.has(i));
+                });
+                grid.appendChild(btn);
+            }
+        }
+
+        function _renderCustomScales() {
+            const list = document.getElementById('scales-list');
+            if (!list) return;
+            if (!_customScales.length) {
+                list.innerHTML = '<div class="empty-state">Cap escala personalitzada creada encara.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            _customScales.forEach((s, i) => {
+                const noteNames = s.intervals.map(n => NOTE_NAMES[n]).join(' ');
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="item-card-body">
+                        <div class="item-card-name">${s.name}</div>
+                        <div class="chip-row">${s.intervals.map(n => `<span class="chip">${NOTE_NAMES[n]}</span>`).join('')}</div>
+                        <div class="item-card-meta" style="margin-top:6px;">${s.intervals.length} notes &nbsp;&middot;&nbsp; intervals: ${s.intervals.join(', ')}</div>
+                    </div>
+                    <button class="item-del-btn" title="Eliminar" data-idx="${i}">&times;</button>`;
+                card.querySelector('.item-del-btn').addEventListener('click', () => {
+                    _customScales.splice(i, 1);
+                    _saveCustomScales();
+                    _renderCustomScales();
+                });
+                list.appendChild(card);
+            });
+        }
+
+        document.getElementById('btn-new-scale')?.addEventListener('click', () => {
+            const form = document.getElementById('scale-form');
+            form.classList.toggle('open');
+            if (form.classList.contains('open')) {
+                _scaleIntervals = new Set([0]);
+                _buildIntervalGrid();
+                document.getElementById('scale-name').focus();
+            }
+        });
+
+        document.getElementById('btn-scale-cancel')?.addEventListener('click', () => {
+            document.getElementById('scale-form').classList.remove('open');
+            document.getElementById('scale-name').value = '';
+        });
+
+        document.getElementById('btn-scale-clear')?.addEventListener('click', () => {
+            _scaleIntervals = new Set([0]);
+            _buildIntervalGrid();
+        });
+
+        document.getElementById('btn-scale-save')?.addEventListener('click', () => {
+            const name = document.getElementById('scale-name').value.trim();
+            if (!name) { alert('Omple el nom de l\'escala.'); return; }
+            if (_scaleIntervals.size < 2) { alert('Selecciona almenys un interval a més de la tònica.'); return; }
+            const intervals = [..._scaleIntervals].sort((a, b) => a - b);
+            _customScales.push({ id: Date.now().toString(), name, intervals });
+            _saveCustomScales();
+            _renderCustomScales();
+            document.getElementById('scale-form').classList.remove('open');
+            document.getElementById('scale-name').value = '';
+        });
+
+        _renderCustomScales();
+
+        // ══════════════════════════════════════════════════════════════
+        // MODES TAB — Escales predefinides checklist
+        // ══════════════════════════════════════════════════════════════
+
+        const MUSICAL_SCALES = [
+            { id: 'major',            name: 'Major',              intervals: [0,2,4,5,7,9,11] },
+            { id: 'natural_minor',    name: 'Menor natural',      intervals: [0,2,3,5,7,8,10] },
+            { id: 'harmonic_minor',   name: 'Menor harmònica',    intervals: [0,2,3,5,7,8,11] },
+            { id: 'melodic_minor',    name: 'Menor melòdica',     intervals: [0,2,3,5,7,9,11] },
+            { id: 'pentatonic_major', name: 'Pentatònica major',  intervals: [0,2,4,7,9] },
+            { id: 'pentatonic_minor', name: 'Pentatònica menor',  intervals: [0,3,5,7,10] },
+            { id: 'blues',            name: 'Blues',              intervals: [0,3,5,6,7,10] },
+            { id: 'dorian',           name: 'Dòria',              intervals: [0,2,3,5,7,9,10] },
+            { id: 'phrygian',         name: 'Frígia',             intervals: [0,1,3,5,7,8,10] },
+            { id: 'lydian',           name: 'Lídia',              intervals: [0,2,4,6,7,9,11] },
+            { id: 'mixolydian',       name: 'Mixolídia',          intervals: [0,2,4,5,7,9,10] },
+            { id: 'locrian',          name: 'Lòcria',             intervals: [0,1,3,5,6,8,10] },
+            { id: 'whole_tone',       name: 'Tons sencers',       intervals: [0,2,4,6,8,10] },
+            { id: 'chromatic',        name: 'Cromàtica',          intervals: [0,1,2,3,4,5,6,7,8,9,10,11] },
+            { id: 'diminished',       name: 'Disminuïda',         intervals: [0,2,3,5,6,8,9,11] },
+            { id: 'augmented',        name: 'Augmentada',         intervals: [0,3,4,7,8,11] },
+        ];
+
+        let _scalePrefs = (() => { try { return JSON.parse(localStorage.getItem('tecla-scale-prefs') || 'null'); } catch { return null; } })()
+            || Object.fromEntries(MUSICAL_SCALES.map(s => [s.id, ['major','natural_minor','pentatonic_major','pentatonic_minor','blues'].includes(s.id)]));
+
+        function _buildPresetScalesGrid() {
+            const grid = document.getElementById('preset-scales-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            MUSICAL_SCALES.forEach(s => {
+                const enabled = _scalePrefs[s.id] ?? false;
+                const card = document.createElement('label');
+                card.className = 'scale-preset-card' + (enabled ? ' enabled' : '');
+                card.innerHTML = `
+                    <input type="checkbox" ${enabled ? 'checked' : ''} data-scale-id="${s.id}">
+                    <div class="scale-preset-info">
+                        <div class="scale-preset-name">${s.name}</div>
+                        <div class="scale-preset-notes">${s.intervals.map(n => NOTE_NAMES[n]).join(' ')}</div>
+                    </div>`;
+                card.querySelector('input').addEventListener('change', e => {
+                    _scalePrefs[s.id] = e.target.checked;
+                    card.classList.toggle('enabled', e.target.checked);
+                });
+                grid.appendChild(card);
+            });
+        }
+
+        document.getElementById('btn-save-scale-prefs')?.addEventListener('click', () => {
+            localStorage.setItem('tecla-scale-prefs', JSON.stringify(_scalePrefs));
+            log('Preferències d\'escales desades.', 'ok');
+        });
+
+        // Build preset scales grid now (DOM element always present)
+        _buildPresetScalesGrid();
+
+        // ── Tema ──────────────────────────────────────────────────────────
+        const _THEMES = ['light','neon','warm','purple','ocean','hc'];
+        function applyTheme(name, save = true) {
+            _THEMES.forEach(t => document.body.classList.remove(`theme-${t}`));
+            if (name !== 'dark') document.body.classList.add(`theme-${name}`);
+            if (save) localStorage.setItem('tecla-theme', name);
+            document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === name));
+        }
+
+        document.querySelectorAll('.theme-btn').forEach(btn => {
+            btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+        });
+
+        // Aplicar tema desat
+        applyTheme(localStorage.getItem('tecla-theme') || 'dark', false);
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,491 @@
+{
+  "_comment": "Registre de modes personalitzats importats per l'usuari",
+  "_version": "1.0",
+  "_description": "Aquest fitxer conté tots els modes personalitzats que has importat a TECLA. No el modifiquis manualment.",
+  "custom_modes": {
+    "Vida": {
+      "file_name": "mode_vida",
+      "class_name": "ModeVida",
+      "added_date": "2026-02-12T18:38:34.883496",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Dinamo": {
+      "file_name": "mode_dinamo",
+      "class_name": "ModeDinamo",
+      "added_date": "2026-02-12T23:45:00.000000",
+      "metadata": {
+        "description": "Mode original del sistema",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Industrial": {
+      "file_name": "mode_industrial",
+      "class_name": "ModeIndustrial",
+      "added_date": "2026-02-12T23:45:00.000000",
+      "metadata": {
+        "description": "Mode original del sistema",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Jazz": {
+      "file_name": "mode_jazz_chords",
+      "class_name": "ModeJazzChords",
+      "added_date": "2026-02-12T23:45:00.000000",
+      "metadata": {
+        "description": "Mode original del sistema",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Mandelbrot": {
+      "file_name": "mode_mandelbrot",
+      "class_name": "ModeMandelbrot",
+      "added_date": "2026-02-12T23:45:00.000000",
+      "metadata": {
+        "description": "Mode original del sistema",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Sinusoidal": {
+      "file_name": "mode_ona_sinusoidal",
+      "class_name": "ModeOnaSinusoidal",
+      "added_date": "2026-02-12T23:45:00.000000",
+      "metadata": {
+        "description": "Mode original del sistema",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Tempesta": {
+      "file_name": "mode_tormenta",
+      "class_name": "ModeTormenta",
+      "added_date": "2026-02-12T23:45:00.000000",
+      "metadata": {
+        "description": "Mode original del sistema",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "ToJazz": {
+      "file_name": "mode_tojazz",
+      "class_name": "ModeToJazz",
+      "added_date": "2026-02-16T19:17:29.879328",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "ToDrone": {
+      "file_name": "mode_todrone",
+      "class_name": "ModeToDrone",
+      "added_date": "2026-02-17T10:53:42.736280",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Chopin": {
+      "file_name": "mode_chopin",
+      "class_name": "ModeChopin",
+      "added_date": "2026-02-22T01:09:30.655591",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Beethoven": {
+      "file_name": "mode_beethoven",
+      "class_name": "ModeBeethoven",
+      "added_date": "2026-02-22T01:18:37.834340",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Mozart": {
+      "file_name": "mode_mozart",
+      "class_name": "ModeMozart",
+      "added_date": "2026-02-22T01:23:52.100458",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Debussy": {
+      "file_name": "mode_debussy",
+      "class_name": "ModeDebussy",
+      "added_date": "2026-02-22T20:47:34.612210",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Satie": {
+      "file_name": "mode_satie",
+      "class_name": "ModeSatie",
+      "added_date": "2026-02-22T20:47:34.662619",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "ToAcord": {
+      "file_name": "mode_toacord",
+      "class_name": "ModeToAcord",
+      "added_date": "2026-02-22T20:47:34.717534",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Bach": {
+      "file_name": "mode_bach",
+      "class_name": "ModeBach",
+      "added_date": "2026-02-22T20:51:25.188359",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "ToArc": {
+      "file_name": "mode_toarc",
+      "class_name": "ModeToArc",
+      "added_date": "2026-02-22T22:00:44.519369",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Einaudi": {
+      "file_name": "mode_einaudi",
+      "class_name": "ModeEinaudi",
+      "added_date": "2026-02-25T12:38:31.179767",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Glass": {
+      "file_name": "mode_glass",
+      "class_name": "ModeGlass",
+      "added_date": "2026-02-25T12:38:31.244999",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Part": {
+      "file_name": "mode_part",
+      "class_name": "ModePart",
+      "added_date": "2026-02-25T12:38:31.421265",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "ToCampanes": {
+      "file_name": "mode_tocampanes",
+      "class_name": "ModeToCampanes",
+      "added_date": "2026-02-25T12:38:31.538462",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Arnalds": {
+      "file_name": "mode_arnalds",
+      "class_name": "ModeArnalds",
+      "added_date": "2026-02-25T13:03:36.920425",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Frahm": {
+      "file_name": "mode_frahm",
+      "class_name": "ModeFrahm",
+      "added_date": "2026-02-25T13:03:37.030926",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Glitch": {
+      "file_name": "mode_glitch",
+      "class_name": "ModeGlitch",
+      "added_date": "2026-02-28T01:14:17.622254",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "HardNoise": {
+      "file_name": "mode_hardnoise",
+      "class_name": "ModeHardNoise",
+      "added_date": "2026-02-28T01:14:17.765414",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Noise": {
+      "file_name": "mode_noise",
+      "class_name": "ModeNoise",
+      "added_date": "2026-02-28T01:14:17.848526",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Groove": {
+      "file_name": "mode_groove",
+      "class_name": "ModeGroove",
+      "added_date": "2026-02-28T01:38:02.678582",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "HardGroove": {
+      "file_name": "mode_hardgroove",
+      "class_name": "ModeHardGroove",
+      "added_date": "2026-02-28T01:38:02.724280",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "HardTechno": {
+      "file_name": "mode_hardtechno",
+      "class_name": "ModeHardTechno",
+      "added_date": "2026-02-28T01:38:02.776882",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Techno": {
+      "file_name": "mode_techno",
+      "class_name": "ModeTechno",
+      "added_date": "2026-02-28T01:38:02.832258",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Bit": {
+      "file_name": "mode_bit",
+      "class_name": "ModeBit",
+      "added_date": "2026-03-01T01:07:49.901398",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Brasa": {
+      "file_name": "mode_brasa",
+      "class_name": "ModeBrasa",
+      "added_date": "2026-03-01T01:07:49.958694",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Crackle": {
+      "file_name": "mode_crackle",
+      "class_name": "ModeCrackle",
+      "added_date": "2026-03-01T01:07:50.027581",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Estatic": {
+      "file_name": "mode_estatic",
+      "class_name": "ModeEstatic",
+      "added_date": "2026-03-01T01:07:50.088807",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Grana": {
+      "file_name": "mode_grana",
+      "class_name": "ModeGrana",
+      "added_date": "2026-03-01T01:07:50.147147",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaCaos": {
+      "file_name": "mode_ona_caos",
+      "class_name": "ModeOnaCaos",
+      "added_date": "2026-03-01T01:07:50.204060",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaPols": {
+      "file_name": "mode_ona_pols",
+      "class_name": "ModeOnaPols",
+      "added_date": "2026-03-01T01:07:50.277095",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaQuadrada": {
+      "file_name": "mode_ona_quadrada",
+      "class_name": "ModeOnaQuadrada",
+      "added_date": "2026-03-01T01:07:50.332547",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaRespiracio": {
+      "file_name": "mode_ona_respiracio",
+      "class_name": "ModeOnaRespiracio",
+      "added_date": "2026-03-01T01:07:50.391713",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaSerra": {
+      "file_name": "mode_ona_serra",
+      "class_name": "ModeOnaSerra",
+      "added_date": "2026-03-01T01:07:50.449385",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaTriangular": {
+      "file_name": "mode_ona_triangular",
+      "class_name": "ModeOnaTriangular",
+      "added_date": "2026-03-01T01:07:50.506161",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "OnaWalk": {
+      "file_name": "mode_ona_walk",
+      "class_name": "ModeOnaWalk",
+      "added_date": "2026-03-01T01:07:50.567577",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "MarkovGenre": {
+      "file_name": "mode_markov_genre",
+      "class_name": "ModeMarkovGenre",
+      "added_date": "2026-03-01T02:55:23.621901",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    },
+    "Makina": {
+      "file_name": "mode_makina",
+      "class_name": "ModeMakina",
+      "added_date": "2026-03-02T11:57:39.145619",
+      "metadata": {
+        "description": "Sense descripció",
+        "has_setup": true,
+        "has_update": true,
+        "has_cleanup": true
+      }
+    }
+  }
+}
