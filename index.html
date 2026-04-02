@@ -19,6 +19,7 @@
         }
         #canvas {
             touch-action: none;
+            will-change: transform;
         }
 
 
@@ -5844,6 +5845,9 @@ openStlViewer('content/ocu3D/TukTuk.stl');
         const SNAP_ZOOM_LEVELS = [0.35, 0.7, 1.4, 3.0];
         let snapZoomIdx = isMobile ? 1 : -1; // Start at 0.7 on mobile
         let pinchSnapped = false;
+        let wasPinching = false;
+        let lastPinchMidX = 0, lastPinchMidY = 0;
+        let _snapAnimRaf = null;
 
         function getNearestSnapIdx(zoom) {
             let best = 0, bestDist = Infinity;
@@ -6095,28 +6099,20 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const rawFactor = distance / initialDistance;
-                if (isMobile) {
-                    // Discrete snap: fire once per gesture when threshold crossed
-                    if (!pinchSnapped) {
-                        if (rawFactor > 1.2 && snapZoomIdx < SNAP_ZOOM_LEVELS.length - 1) {
-                            applySnapZoom(snapZoomIdx + 1, pinchMidX, pinchMidY);
-                            pinchSnapped = true;
-                        } else if (rawFactor < 0.83 && snapZoomIdx > 0) {
-                            applySnapZoom(snapZoomIdx - 1, pinchMidX, pinchMidY);
-                            pinchSnapped = true;
-                        }
-                    }
-                } else {
-                    // Desktop: continuous zoom toward pinch center
-                    const newZoom = Math.max(0.1, Math.min(5, initialZoom * rawFactor));
-                    const canvasRect = canvas.getBoundingClientRect();
-                    const logX = (pinchMidX - canvasRect.left) / zoomLevel - panX;
-                    const logY = (pinchMidY - canvasRect.top) / zoomLevel - panY;
-                    panX = (pinchMidX - canvasRect.left) / newZoom - logX;
-                    panY = (pinchMidY - canvasRect.top) / newZoom - logY;
-                    zoomLevel = newZoom;
-                    updateCanvasTransform();
-                }
+                // Continuous zoom toward live finger midpoint (mobile + desktop)
+                const liveX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const liveY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const newZoom = Math.max(0.2, Math.min(4, initialZoom * rawFactor));
+                const canvasRect = canvas.getBoundingClientRect();
+                const logX = (liveX - canvasRect.left) / zoomLevel - panX;
+                const logY = (liveY - canvasRect.top) / zoomLevel - panY;
+                panX = (liveX - canvasRect.left) / newZoom - logX;
+                panY = (liveY - canvasRect.top) / newZoom - logY;
+                zoomLevel = newZoom;
+                lastPinchMidX = liveX; lastPinchMidY = liveY;
+                wasPinching = true;
+                if (_snapAnimRaf) { cancelAnimationFrame(_snapAnimRaf); _snapAnimRaf = null; }
+                updateCanvasTransform();
             }
         }, { passive: false });
 
@@ -6154,9 +6150,12 @@ openStlViewer('content/ocu3D/TukTuk.stl');
 
         // Mobile canvas panning — fluid with momentum/inertia
         let canvasPanTouchStartX = 0, canvasPanTouchStartY = 0;
-        // Clear transition on pan start to avoid snap animation interfering
+        // Cancel any in-progress snap animation when a new touch starts
         document.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1 && canvas.style.transition) canvas.style.transition = '';
+            if (e.touches.length === 1) {
+                if (canvas.style.transition) canvas.style.transition = '';
+                if (_snapAnimRaf) { cancelAnimationFrame(_snapAnimRaf); _snapAnimRaf = null; }
+            }
         }, { passive: true });
         let canvasPanMoved = false;
         let panVelX = 0, panVelY = 0;
@@ -6204,7 +6203,46 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             }
         }, { passive: false });
 
-        document.addEventListener('touchend', () => {
+        document.addEventListener('touchend', (ev) => {
+            // On mobile: after pinch, smoothly settle to nearest snap level
+            if (isMobile && wasPinching && ev.touches.length < 2) {
+                wasPinching = false;
+                if (_snapAnimRaf) cancelAnimationFrame(_snapAnimRaf);
+                const nearest = SNAP_ZOOM_LEVELS.reduce((a, b) =>
+                    Math.abs(b - zoomLevel) < Math.abs(a - zoomLevel) ? b : a
+                );
+                if (Math.abs(nearest - zoomLevel) > 0.01) {
+                    const z0 = zoomLevel, px0 = panX, py0 = panY;
+                    const cr = canvas.getBoundingClientRect();
+                    const lx = (lastPinchMidX - cr.left) / z0 - px0;
+                    const ly = (lastPinchMidY - cr.top)  / z0 - py0;
+                    const tpx = (lastPinchMidX - cr.left) / nearest - lx;
+                    const tpy = (lastPinchMidY - cr.top)  / nearest - ly;
+                    const t0 = performance.now(), dur = 300;
+                    const snapStep = (now) => {
+                        const t = Math.min(1, (now - t0) / dur);
+                        const ease = 1 - Math.pow(1 - t, 3);
+                        zoomLevel = z0  + (nearest - z0)  * ease;
+                        panX      = px0 + (tpx    - px0)  * ease;
+                        panY      = py0 + (tpy    - py0)  * ease;
+                        updateCanvasTransform();
+                        if (t < 1) { _snapAnimRaf = requestAnimationFrame(snapStep); }
+                        else {
+                            _snapAnimRaf = null;
+                            zoomLevel = nearest; panX = tpx; panY = tpy;
+                            snapZoomIdx = SNAP_ZOOM_LEVELS.indexOf(nearest);
+                            updateCanvasTransform();
+                            scheduleStlQualityUpdate();
+                        }
+                    };
+                    _snapAnimRaf = requestAnimationFrame(snapStep);
+                } else {
+                    snapZoomIdx = SNAP_ZOOM_LEVELS.indexOf(nearest);
+                }
+            } else {
+                wasPinching = false;
+            }
+            // Momentum pan
             if (isPanningCanvas && (Math.abs(panVelX) > 0.3 || Math.abs(panVelY) > 0.3)) {
                 const applyMomentum = () => {
                     panVelX *= 0.90; panVelY *= 0.90;

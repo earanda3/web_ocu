@@ -84,7 +84,7 @@ function openStlViewer(filePath) {
         top: 0; left: 0; width: 100%; height: 22px;
         cursor: grab;
         z-index: 50;
-        background: linear-gradient(rgba(0,0,0,0.18), transparent);
+        background: transparent;
         display: flex; align-items: center; justify-content: center;
         pointer-events: auto;
         box-sizing: border-box;
@@ -741,6 +741,7 @@ function initThreeJS(container, filePath, options = {}) {
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
+    renderer.domElement.style.background = 'transparent';
     container.appendChild(renderer.domElement);
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
