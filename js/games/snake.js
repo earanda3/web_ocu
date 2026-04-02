@@ -350,25 +350,38 @@ function handleSnakeCollision(x, y) {
         }
     } catch { }
 
-    // Convert canvas coords to screen coords for elementsFromPoint.
-    // c.left/top already encodes pan (getBoundingClientRect reflects the transformed canvas).
-    const c = canvas.getBoundingClientRect();
-    const zl = window.zoomLevel || 1;
-    const clientX = c.left + (x + SNAKE_SIZE / 2) * zl;
-    const clientY = c.top  + (y + SNAKE_SIZE / 2) * zl;
-
-    // Find top-most element under head within app surfaces (canvas or PDF UIs), excluding snake/HUD
-    const els = document.elementsFromPoint(clientX, clientY) || [];
+    // Canvas-space collision: compare snake head rect to element CSS positions (zoom/pan independent, works on mobile).
+    const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
     let target = null;
-    for (const el of els) {
-        if (!el) continue;
-        if (el.id === 'snake-layer' || el.id === 'snake-hud') continue;
-        // Skip maze handles but allow other interactions
-        if (el.classList && (el.classList.contains('maze-resize-handle') || el.classList.contains('maze-move-handle'))) continue;
-        if (el.closest && (el.closest('#canvas') || el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
-            target = el;
-            break;
+    if (canvas) {
+        const children = canvas.children;
+        for (let i = children.length - 1; i >= 0; i--) {
+            const el = children[i];
+            if (!el) continue;
+            if (el.id === 'snake-layer'  || el.id === 'snake-hud' ||
+                el.id === 'snake2-layer' || el.id === 'snake2-hud') continue;
+            if (el.classList && (el.classList.contains('maze-resize-handle') || el.classList.contains('maze-move-handle'))) continue;
+            const elL = parseFloat(el.style.left) || 0;
+            const elT = parseFloat(el.style.top)  || 0;
+            const elR = elL + (el.offsetWidth  || 0);
+            const elB = elT + (el.offsetHeight || 0);
+            if (headR > elL && x < elR && headB > elT && y < elB) { target = el; break; }
         }
+    }
+    // Fallback: PDF elements may be fixed/outside canvas — use elementsFromPoint only for them
+    if (!target) {
+        try {
+            const c = canvas.getBoundingClientRect();
+            const zl = window.zoomLevel || 1;
+            const cx2 = c.left + (x + SNAKE_SIZE / 2) * zl;
+            const cy2 = c.top  + (y + SNAKE_SIZE / 2) * zl;
+            const els = document.elementsFromPoint(cx2, cy2) || [];
+            for (const el of els) {
+                if (el.closest && (el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
+                    target = el; break;
+                }
+            }
+        } catch { }
     }
     if (!target) return;
 
@@ -635,25 +648,38 @@ function handleSnake2Collision(x, y) {
         }
     } catch { }
 
-    // Convert canvas coords to screen coords for elementsFromPoint.
-    // c.left/top already encodes pan (getBoundingClientRect reflects the transformed canvas).
-    const c = canvas.getBoundingClientRect();
-    const zl = window.zoomLevel || 1;
-    const clientX = c.left + (x + SNAKE_SIZE / 2) * zl;
-    const clientY = c.top  + (y + SNAKE_SIZE / 2) * zl;
-
-    // Find top-most element under head within app surfaces (canvas or PDF UIs), excluding snake/HUD
-    const els = document.elementsFromPoint(clientX, clientY) || [];
+    // Canvas-space collision: compare snake head rect to element CSS positions (zoom/pan independent, works on mobile).
+    const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
     let target = null;
-    for (const el of els) {
-        if (!el) continue;
-        if (el.id === 'snake2-layer' || el.id === 'snake2-hud') continue;
-        // Skip maze handles but allow other interactions
-        if (el.classList && (el.classList.contains('maze-resize-handle') || el.classList.contains('maze-move-handle'))) continue;
-        if (el.closest && (el.closest('#canvas') || el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
-            target = el;
-            break;
+    if (canvas) {
+        const children = canvas.children;
+        for (let i = children.length - 1; i >= 0; i--) {
+            const el = children[i];
+            if (!el) continue;
+            if (el.id === 'snake-layer'  || el.id === 'snake-hud' ||
+                el.id === 'snake2-layer' || el.id === 'snake2-hud') continue;
+            if (el.classList && (el.classList.contains('maze-resize-handle') || el.classList.contains('maze-move-handle'))) continue;
+            const elL = parseFloat(el.style.left) || 0;
+            const elT = parseFloat(el.style.top)  || 0;
+            const elR = elL + (el.offsetWidth  || 0);
+            const elB = elT + (el.offsetHeight || 0);
+            if (headR > elL && x < elR && headB > elT && y < elB) { target = el; break; }
         }
+    }
+    // Fallback: PDF elements may be fixed/outside canvas — use elementsFromPoint only for them
+    if (!target) {
+        try {
+            const c = canvas.getBoundingClientRect();
+            const zl = window.zoomLevel || 1;
+            const cx2 = c.left + (x + SNAKE_SIZE / 2) * zl;
+            const cy2 = c.top  + (y + SNAKE_SIZE / 2) * zl;
+            const els = document.elementsFromPoint(cx2, cy2) || [];
+            for (const el of els) {
+                if (el.closest && (el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
+                    target = el; break;
+                }
+            }
+        } catch { }
     }
     if (!target) return;
 
