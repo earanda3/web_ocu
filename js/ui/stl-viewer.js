@@ -77,31 +77,17 @@ function openStlViewer(filePath) {
     viewer.container = viewerContainer;
     stlViewers.push(viewer);
 
-    // Drag handle strip at top — keeps manipulation limited to the 3D object
-    const dragHandle = document.createElement('div');
-    dragHandle.style.cssText = `
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 22px;
-        cursor: grab;
-        z-index: 50;
-        background: transparent;
-        display: flex; align-items: center; justify-content: center;
-        pointer-events: auto;
-        box-sizing: border-box;
-    `;
-    dragHandle.innerHTML = '<span style="opacity:0.5;letter-spacing:5px;font-size:9px;color:#fff;user-select:none">&#8943;</span>';
-    viewerContainer.appendChild(dragHandle);
-
-    // Close button
+    // Close button (top-right corner, direct child of container)
     const closeBtn = document.createElement('div');
     closeBtn.textContent = '×';
     closeBtn.style.cssText = `
-        position: absolute; right: 5px; top: 2px;
-        cursor: pointer; font-size: 16px; line-height: 1;
-        color: rgba(255,255,255,0.65); z-index: 51;
-        width: 18px; height: 18px; display: flex;
+        position: absolute; right: 4px; top: 2px;
+        cursor: pointer; font-size: 18px; line-height: 1;
+        color: rgba(255,255,255,0.7); z-index: 200;
+        width: 20px; height: 20px; display: flex;
         align-items: center; justify-content: center;
-        pointer-events: auto;
+        pointer-events: auto; user-select: none;
+        text-shadow: 0 0 3px rgba(0,0,0,0.8);
     `;
     const removeViewer = () => {
         const idx = stlViewers.indexOf(viewer);
@@ -110,64 +96,13 @@ function openStlViewer(filePath) {
         viewerContainer.remove();
     };
     closeBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); removeViewer(); });
-    closeBtn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); removeViewer(); });
-    dragHandle.appendChild(closeBtn);
+    closeBtn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); removeViewer(); }, { passive: false });
+    viewerContainer.appendChild(closeBtn);
 
-    // Drag logic: mouse
-    let stlDragOX = 0, stlDragOY = 0, stlDragging = false;
-    dragHandle.addEventListener('mousedown', (e) => {
-        if (e.target === closeBtn) return;
-        e.preventDefault(); e.stopPropagation();
-        stlDragging = true;
-        dragHandle.style.cursor = 'grabbing';
-        const canvasEl = window.canvas || document.getElementById('canvas');
-        const cr = canvasEl.getBoundingClientRect();
-        const zl = window.zoomLevel || 1;
-        stlDragOX = (e.clientX - cr.left) / zl - (window.panX || 0) - parseFloat(viewerContainer.style.left || 0);
-        stlDragOY = (e.clientY - cr.top) / zl - (window.panY || 0) - parseFloat(viewerContainer.style.top || 0);
-        const onMove = (ev) => {
-            if (!stlDragging) return;
-            const cr2 = canvasEl.getBoundingClientRect();
-            const zl2 = window.zoomLevel || 1;
-            viewerContainer.style.left = ((ev.clientX - cr2.left) / zl2 - (window.panX || 0) - stlDragOX) + 'px';
-            viewerContainer.style.top  = ((ev.clientY - cr2.top)  / zl2 - (window.panY || 0) - stlDragOY) + 'px';
-        };
-        const onUp = () => {
-            stlDragging = false; dragHandle.style.cursor = 'grab';
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-        };
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    });
-
-    // Drag logic: touch
-    dragHandle.addEventListener('touchstart', (e) => {
-        if (e.target === closeBtn) return;
-        e.preventDefault(); e.stopPropagation();
-        if (e.touches.length !== 1) return;
-        stlDragging = true;
-        const canvasEl = window.canvas || document.getElementById('canvas');
-        const cr = canvasEl.getBoundingClientRect();
-        const zl = window.zoomLevel || 1;
-        stlDragOX = (e.touches[0].clientX - cr.left) / zl - (window.panX || 0) - parseFloat(viewerContainer.style.left || 0);
-        stlDragOY = (e.touches[0].clientY - cr.top)  / zl - (window.panY || 0) - parseFloat(viewerContainer.style.top || 0);
-        const onMove = (ev) => {
-            if (!stlDragging || ev.touches.length !== 1) return;
-            ev.preventDefault();
-            const cr2 = canvasEl.getBoundingClientRect();
-            const zl2 = window.zoomLevel || 1;
-            viewerContainer.style.left = ((ev.touches[0].clientX - cr2.left) / zl2 - (window.panX || 0) - stlDragOX) + 'px';
-            viewerContainer.style.top  = ((ev.touches[0].clientY - cr2.top)  / zl2 - (window.panY || 0) - stlDragOY) + 'px';
-        };
-        const onEnd = () => {
-            stlDragging = false;
-            dragHandle.removeEventListener('touchmove', onMove);
-            dragHandle.removeEventListener('touchend', onEnd);
-        };
-        dragHandle.addEventListener('touchmove', onMove, { passive: false });
-        dragHandle.addEventListener('touchend', onEnd);
-    }, { passive: false });
+    // Restore drag-to-move (same as other canvas elements)
+    if (typeof addWordDragEvents === 'function') {
+        addWordDragEvents(viewerContainer);
+    }
 
     enableStlResize(viewerContainer, viewer);
 }

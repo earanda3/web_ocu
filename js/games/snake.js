@@ -350,10 +350,12 @@ function handleSnakeCollision(x, y) {
         }
     } catch { }
 
-    // Convert canvas coords to client coords for event dispatch
+    // Convert canvas coords to screen coords for elementsFromPoint.
+    // c.left/top already encodes pan (getBoundingClientRect reflects the transformed canvas).
     const c = canvas.getBoundingClientRect();
-    const clientX = c.left + (x + (window.panX || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
-    const clientY = c.top + (y + (window.panY || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
+    const zl = window.zoomLevel || 1;
+    const clientX = c.left + (x + SNAKE_SIZE / 2) * zl;
+    const clientY = c.top  + (y + SNAKE_SIZE / 2) * zl;
 
     // Find top-most element under head within app surfaces (canvas or PDF UIs), excluding snake/HUD
     const els = document.elementsFromPoint(clientX, clientY) || [];
@@ -633,10 +635,12 @@ function handleSnake2Collision(x, y) {
         }
     } catch { }
 
-    // Convert canvas coords to client coords for event dispatch
+    // Convert canvas coords to screen coords for elementsFromPoint.
+    // c.left/top already encodes pan (getBoundingClientRect reflects the transformed canvas).
     const c = canvas.getBoundingClientRect();
-    const clientX = c.left + (x + (window.panX || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
-    const clientY = c.top + (y + (window.panY || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
+    const zl = window.zoomLevel || 1;
+    const clientX = c.left + (x + SNAKE_SIZE / 2) * zl;
+    const clientY = c.top  + (y + SNAKE_SIZE / 2) * zl;
 
     // Find top-most element under head within app surfaces (canvas or PDF UIs), excluding snake/HUD
     const els = document.elementsFromPoint(clientX, clientY) || [];
