@@ -5846,50 +5846,69 @@ openStlViewer('content/ocu3D/TukTuk.stl');
         }
 
         // Simplified mobile D-pad - only when snake is active
-        let dpadOverlay = null;
+        let dpadOverlay = null; // Left for compatibility but repurposed
+        let swipeTouchStartX = 0;
+        let swipeTouchStartY = 0;
+
         function createDpadOverlay() {
             if (dpadOverlay) return;
             dpadOverlay = document.createElement('div');
-            dpadOverlay.id = 'dpad-overlay';
+            dpadOverlay.id = 'swipe-overlay';
             dpadOverlay.style.cssText = `
                 position: fixed;
-                bottom: 30px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 280px;
-                height: 280px;
+                top: 0; left: 0; right: 0; bottom: 0;
                 z-index: 9999;
-                pointer-events: auto;
-                opacity: 0.7;
             `;
-            dpadOverlay.innerHTML = `
-                <div style="position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; user-select: none; cursor: pointer; border: 2px solid rgba(255,255,255,0.8);" data-dir="up"></div>
-                <div style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; user-select: none; cursor: pointer; border: 2px solid rgba(255,255,255,0.8);" data-dir="down"></div>
-                <div style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; user-select: none; cursor: pointer; border: 2px solid rgba(255,255,255,0.8);" data-dir="left"></div>
-                <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; user-select: none; cursor: pointer; border: 2px solid rgba(255,255,255,0.8);" data-dir="right"></div>
-            `;
-            document.body.appendChild(dpadOverlay);
-
-            // Add touch handlers to d-pad buttons
+            
             dpadOverlay.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                const target = e.target.closest('[data-dir]');
-                if (target && target.dataset.dir) {
-                    snakeDir = target.dataset.dir;
-                    // Simple feedback: brighter and slightly larger
-                    target.style.background = 'rgba(255,255,255,0.9)';
-                    target.style.transform = target.style.transform + ' scale(1.2)';
-                }
+                swipeTouchStartX = e.changedTouches[0].screenX;
+                swipeTouchStartY = e.changedTouches[0].screenY;
+            }, { passive: false });
+
+            dpadOverlay.addEventListener('touchmove', (e) => {
+                e.preventDefault(); // Prevent scrolling while actively playing
             }, { passive: false });
 
             dpadOverlay.addEventListener('touchend', (e) => {
-                const target = e.target.closest('[data-dir]');
-                if (target) {
-                    // Reset to subtle and normal size
-                    target.style.background = 'rgba(255,255,255,0.6)';
-                    target.style.transform = target.style.transform.replace(' scale(1.2)', '');
+                let touchEndX = e.changedTouches[0].screenX;
+                let touchEndY = e.changedTouches[0].screenY;
+                const diffX = touchEndX - swipeTouchStartX;
+                const diffY = touchEndY - swipeTouchStartY;
+                const threshold = 30; // Minimum swipe distance
+                
+                if (Math.abs(diffX) < threshold && Math.abs(diffY) < threshold) {
+                    // Treat as tap: temporarily disable overlay to click beneath
+                    dpadOverlay.style.pointerEvents = 'none';
+                    const elementUnderTap = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                    if (elementUnderTap) {
+                        elementUnderTap.click();
+                    }
+                    dpadOverlay.style.pointerEvents = 'auto';
+                    return;
                 }
-            });
+                
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    // Horizontal swipe
+                    if (diffX > 0) {
+                        if (snakeActive && snakeDir !== 'left') snakeDir = 'right';
+                        if (typeof snake2Active !== 'undefined' && snake2Active && snake2Dir !== 'left') snake2Dir = 'right';
+                    } else {
+                        if (snakeActive && snakeDir !== 'right') snakeDir = 'left';
+                        if (typeof snake2Active !== 'undefined' && snake2Active && snake2Dir !== 'right') snake2Dir = 'left';
+                    }
+                } else {
+                    // Vertical swipe
+                    if (diffY > 0) {
+                        if (snakeActive && snakeDir !== 'up') snakeDir = 'down';
+                        if (typeof snake2Active !== 'undefined' && snake2Active && snake2Dir !== 'up') snake2Dir = 'down';
+                    } else {
+                        if (snakeActive && snakeDir !== 'down') snakeDir = 'up';
+                        if (typeof snake2Active !== 'undefined' && snake2Active && snake2Dir !== 'down') snake2Dir = 'up';
+                    }
+                }
+            }, { passive: false });
+
+            document.body.appendChild(dpadOverlay);
         }
 
         function removeDpadOverlay() {

@@ -521,43 +521,112 @@ function enableStlResize(container, viewer) {
         }
     });
 
-    // Pinch resize for mobile
-    let pinch = { active: false, dist: 0, width: 0, height: 0 };
-    container.style.touchAction = 'none';
+    // Multi-touch gestures for mobile
+    let touchState = {
+        activeTouches: 0,
+        dist: 0,
+        baseScale: 1,
+        lastCentroid: { x: 0, y: 0 },
+        baseOpacity: 1,
+        lastTap: 0
+    };
+    container.style.touchAction = 'none'; // Prevent browser defaults like scroll/zoom
     
     container.addEventListener('touchstart', (e) => {
+        touchState.activeTouches = e.touches.length;
+        
+        // Double tap detection for color wheel (only with 1 finger)
+        if (e.touches.length === 1) {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - touchState.lastTap;
+            if (tapLength < 400 && tapLength > 0) {
+                // Synthesize dblclick event for the color wheel
+                const dblclickEvent = new MouseEvent('dblclick', {
+                    bubbles: true, cancelable: true, view: window,
+                    clientX: e.touches[0].clientX, clientY: e.touches[0].clientY
+                });
+                container.dispatchEvent(dblclickEvent);
+            }
+            touchState.lastTap = currentTime;
+        }
+
         if (e.touches.length === 2) {
             e.preventDefault();
-            pinch.active = true;
+            // Prepare for scale & rotate
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
-            pinch.dist = Math.sqrt(dx * dx + dy * dy);
-            pinch.width = parseFloat(container.style.width) || container.offsetWidth;
-            pinch.height = parseFloat(container.style.height) || container.offsetHeight;
-        }
-    });
-
-    container.addEventListener('touchmove', (e) => {
-        if (pinch.active && e.touches.length === 2) {
+            touchState.dist = Math.sqrt(dx * dx + dy * dy);
+            if (viewer.mesh) {
+                touchState.baseScale = viewer.mesh.scale.x;
+            }
+            
+            touchState.lastCentroid = {
+                x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+            };
+        } else if (e.touches.length === 3) {
             e.preventDefault();
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const scale = dist / pinch.dist;
-            const newWidth = Math.max(100, Math.min(8000, pinch.width * scale));
-            const newHeight = Math.max(100, Math.min(8000, pinch.height * scale));
-            container.style.width = newWidth + 'px';
-            container.style.height = newHeight + 'px';
-            if (viewer.renderer) {
-                viewer.renderer.setSize(newWidth, newHeight);
-                viewer.camera.aspect = newWidth / newHeight;
-                viewer.camera.updateProjectionMatrix();
+            // Prepare for opacity
+            touchState.lastCentroid = {
+                x: (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3,
+                y: (e.touches[0].clientY + e.touches[1].clientY + e.touches[2].clientY) / 3
+            };
+            if (viewer.mesh && viewer.mesh.material) {
+                touchState.baseOpacity = viewer.mesh.material.opacity;
             }
         }
     });
 
-    container.addEventListener('touchend', () => {
-        pinch.active = false;
+    container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+            e.preventDefault();
+            if (!viewer.mesh) return;
+            
+            // Handle Scale (Pinch)
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (touchState.dist > 0) {
+                const scaleFactor = dist / touchState.dist;
+                const newScale = Math.min(3, Math.max(0.3, touchState.baseScale * scaleFactor));
+                viewer.mesh.scale.set(newScale, newScale, newScale);
+            }
+            
+            // Handle Rotation (2-finger drag/pan)
+            const centroid = {
+                x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+            };
+            const deltaX = centroid.x - touchState.lastCentroid.x;
+            const deltaY = centroid.y - touchState.lastCentroid.y;
+            
+            viewer.mesh.rotation.y += deltaX * 0.01;
+            viewer.mesh.rotation.x += deltaY * 0.01;
+            
+            touchState.lastCentroid = centroid;
+        } else if (e.touches.length === 3) {
+            e.preventDefault();
+            if (!viewer.mesh || !viewer.mesh.material) return;
+            
+            // Handle Opacity (3-finger vertical drag)
+            const centroid = {
+                x: (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3,
+                y: (e.touches[0].clientY + e.touches[1].clientY + e.touches[2].clientY) / 3
+            };
+            const deltaY = centroid.y - touchState.lastCentroid.y;
+            
+            // Move UP (negative deltaY) increases opacity, move DOWN decreases
+            const opacityChange = -deltaY * 0.005;
+            const newOpacity = Math.min(1, Math.max(0.1, touchState.baseOpacity + opacityChange));
+            
+            viewer.mesh.material.opacity = newOpacity;
+            touchState.baseOpacity = newOpacity;
+            touchState.lastCentroid = centroid;
+        }
+    });
+
+    container.addEventListener('touchend', (e) => {
+        touchState.activeTouches = e.touches.length;
     });
 }
 

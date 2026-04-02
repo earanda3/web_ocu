@@ -20,4 +20,4 @@ jobs:
         
     - name: 🚀 Deploy to ocu.cat
       run: |
-        curl -X POST --data-binary @web_ocu.zip "https://ocu.cat/github_deploy.php?token=${{ secrets.DEPLOY_TOKEN }}"
+        curl -X POST -F "f=@web_ocu.zip" "https://ocu.cat/github_deploy.php?token=${{ secrets.DEPLOY_TOKEN }}"
