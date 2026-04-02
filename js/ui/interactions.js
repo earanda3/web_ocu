@@ -3,8 +3,7 @@
 function getCanvas() {
     return window.canvas || document.getElementById('canvas');
 }
-const canvas = getCanvas(); // Will be null initially but accessed via getCanvas() in functions
-const fonts = window.fonts || ['font-minecraft', 'font-oregular', 'font-helvetica', 'font-courier'];
+// Removed duplicate global variable declarations to prevent SyntaxError with main.js
 
 // Create slot machine effect for a word element
 function createWordSlotMachine(element, text) {

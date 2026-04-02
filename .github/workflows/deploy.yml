@@ -14,8 +14,10 @@ jobs:
       uses: actions/checkout@v4
       
     - name: 📦 Archive website
-      run: zip -r web_ocu.zip . -x "*.git*" ".github/*" "Backup*"
-      
+      run: |
+        rm -rf .git .github Backup scripts py __pycache__ STL
+        zip -r web_ocu.zip .
+        
     - name: 🚀 Deploy to ocu.cat
       run: |
         curl -X POST --data-binary @web_ocu.zip "https://ocu.cat/github_deploy.php?token=${{ secrets.DEPLOY_TOKEN }}"
