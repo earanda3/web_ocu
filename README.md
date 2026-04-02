@@ -47,3 +47,4 @@ pdf-platform/
 - Si el port està ocupat, automàticament prova el següent
 - Compatible amb tots els navegadors moderns
 - Suporta arxius PDF de qualsevol mida
+ 
