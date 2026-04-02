@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Interactive Interface</title>
     <link rel="stylesheet" href="lib/pdf-viewer.css">
     <style>
@@ -11,6 +11,14 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        /* Eliminate 300ms tap delay on all interactive elements */
+        a, button, [role="button"] {
+            touch-action: manipulation;
+        }
+        #canvas {
+            touch-action: none;
         }
 
 
@@ -5026,55 +5034,40 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 document.addEventListener('mouseup', upHandler);
             });
 
-            // Touch events (mobile)
+            // Touch events (mobile) — instant tap (no 300ms delay)
             element.addEventListener('touchstart', (e) => {
-                // Check for double tap
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastTap;
-
-                if (tapLength < 500 && tapLength > 0) {
-                    // Double tap detected
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    // If it's the tao element or a file word with download attribute
-                    if (element.hasAttribute('href') && element.hasAttribute('download')) {
-                        // Open PDF preview on mobile double-tap
-                        previewPDF();
-                        return;
-                    } else if (element.id === 'currency') {
-                        // Show currency image
-                        showCurrencyImage();
-                        return;
-                    } else if (element.id === 'about-btn') {
-                        // Open about page
-                        window.open('about.html', '_blank');
-                        return;
-                    }
-                }
-
-                lastTap = currentTime;
-
-                if (e.touches.length > 1) return; // Ignore multi-touch
-                // Allow scrolling inside PDF viewer; don't start drag from its inner area
+                if (e.touches.length > 1) return;
                 if (element.id === 'pdf-container' && e.target && e.target.closest && e.target.closest('#pdf-js-view')) {
                     return;
                 }
 
+                // Prevent browser 300ms click delay for all word taps
+                e.preventDefault();
+
+                const currentTime = Date.now();
+                const tapLength = currentTime - lastTap;
+                lastTap = currentTime;
+
                 wordDragging = true;
+                let hasMoved = false;
 
                 const touch = e.touches[0];
+                const touchStartX = touch.clientX;
+                const touchStartY = touch.clientY;
                 const rect = element.getBoundingClientRect();
                 wordOffset.x = touch.clientX - rect.left;
                 wordOffset.y = touch.clientY - rect.top;
 
-                const touchMoveHandler = (e) => {
-                    if (!wordDragging || e.touches.length > 1) return;
-
-                    const touch = e.touches[0];
-                    const x = (touch.clientX - wordOffset.x) / zoomLevel - panX;
-                    const y = (touch.clientY - wordOffset.y) / zoomLevel - panY;
-
+                const touchMoveHandler = (ev) => {
+                    if (!wordDragging || ev.touches.length > 1) return;
+                    const t = ev.touches[0];
+                    const dx = t.clientX - touchStartX;
+                    const dy = t.clientY - touchStartY;
+                    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) hasMoved = true;
+                    if (!hasMoved) return;
+                    ev.preventDefault();
+                    const x = (t.clientX - wordOffset.x) / zoomLevel - panX;
+                    const y = (t.clientY - wordOffset.y) / zoomLevel - panY;
                     element.style.left = x + 'px';
                     element.style.top = y + 'px';
                 };
@@ -5083,6 +5076,15 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                     wordDragging = false;
                     element.removeEventListener('touchmove', touchMoveHandler);
                     element.removeEventListener('touchend', touchEndHandler);
+                    if (!hasMoved) {
+                        if (tapLength < 500 && tapLength > 0) {
+                            // Double-tap: contextmenu action
+                            element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+                        } else {
+                            // Single tap: click action
+                            element.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+                        }
+                    }
                 };
 
                 element.addEventListener('touchmove', touchMoveHandler, { passive: false });
@@ -6013,44 +6015,44 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             }
         });
 
-        // Touch pinch zoom (mobile) - less sensitive
+        // Touch pinch zoom (mobile) — zooms toward pinch center
+        let pinchMidX = 0, pinchMidY = 0;
         document.addEventListener('touchstart', (e) => {
-            // Ignore pinch start if it begins inside the PDF modal
-            if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#pdf-container'))) {
+            if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#pdf-container') || e.target.closest('.stl-viewer-container'))) {
                 return;
             }
             if (e.touches.length === 2) {
                 e.preventDefault();
-
-                // Calculate initial distance between two fingers
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 initialDistance = Math.sqrt(dx * dx + dy * dy);
                 initialZoom = zoomLevel;
+                // Store pinch midpoint in canvas logical coords
+                pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
             }
         }, { passive: false });
 
         document.addEventListener('touchmove', (e) => {
-            // Ignore pinch move if it occurs inside a modal
-            if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#pdf-container'))) {
+            if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#pdf-container') || e.target.closest('.stl-viewer-container'))) {
                 return;
             }
             if (e.touches.length === 2) {
                 e.preventDefault();
-
-                // Calculate current distance between two fingers
+                isPanningCanvas = false;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-
-                // Reduce sensitivity by dividing by a higher number
-                const zoomFactor = distance / initialDistance;
-                const newZoom = initialZoom * (1 + (zoomFactor - 1) * 0.3); // Reduced sensitivity
-
-                if (newZoom > 0.1 && newZoom < 5) {
-                    zoomLevel = newZoom;
-                    updateCanvasTransform();
-                }
+                const rawFactor = distance / initialDistance;
+                const newZoom = Math.max(0.1, Math.min(5, initialZoom * rawFactor));
+                // Zoom toward pinch center: keep midpoint stable in logical coords
+                const canvasRect = canvas.getBoundingClientRect();
+                const logX = (pinchMidX - canvasRect.left) / zoomLevel - panX;
+                const logY = (pinchMidY - canvasRect.top) / zoomLevel - panY;
+                panX = (pinchMidX - canvasRect.left) / newZoom - logX;
+                panY = (pinchMidY - canvasRect.top) / newZoom - logY;
+                zoomLevel = newZoom;
+                updateCanvasTransform();
             }
         }, { passive: false });
 
@@ -6086,40 +6088,67 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             document.body.style.cursor = 'auto';
         });
 
-        // Mobile canvas panning with touch - only single touch to avoid conflicts
+        // Mobile canvas panning — fluid with momentum/inertia
+        let canvasPanTouchStartX = 0, canvasPanTouchStartY = 0;
+        let canvasPanMoved = false;
+        let panVelX = 0, panVelY = 0;
+        let panLastX = 0, panLastY = 0, panLastTime = 0;
+        let panMomentumRaf = null;
+
         document.addEventListener('touchstart', (e) => {
-            // Do not start canvas panning if touch begins inside any modal or d-pad
-            if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#dpad-overlay'))) {
+            if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#dpad-overlay') || e.target.closest('.stl-viewer-container'))) {
                 return;
             }
-            // Only start panning with single touch and when not pinching
             if (e.touches.length === 1 && (e.target === document.body || e.target === canvas)) {
-                // Wait a bit to see if this becomes a pinch gesture
-                setTimeout(() => {
-                    if (e.touches && e.touches.length === 1) {
-                        isPanningCanvas = true;
-                        panStartX = e.touches[0].clientX - panX * zoomLevel;
-                        panStartY = e.touches[0].clientY - panY * zoomLevel;
-                    }
-                }, 50);
+                if (panMomentumRaf) { cancelAnimationFrame(panMomentumRaf); panMomentumRaf = null; }
+                canvasPanTouchStartX = e.touches[0].clientX;
+                canvasPanTouchStartY = e.touches[0].clientY;
+                panStartX = e.touches[0].clientX - panX * zoomLevel;
+                panStartY = e.touches[0].clientY - panY * zoomLevel;
+                panLastX = panX; panLastY = panY;
+                panLastTime = Date.now();
+                canvasPanMoved = false;
+                panVelX = 0; panVelY = 0;
             }
         }, { passive: true });
 
         document.addEventListener('touchmove', (e) => {
-            // Only pan with single touch, stop panning if multi-touch detected
-            if (e.touches.length > 1) {
-                isPanningCanvas = false;
-                return;
-            }
-            if (isPanningCanvas && e.touches.length === 1) {
-                e.preventDefault();
-                panX = (e.touches[0].clientX - panStartX) / zoomLevel;
-                panY = (e.touches[0].clientY - panStartY) / zoomLevel;
-                updateCanvasTransform();
+            if (e.touches.length > 1) { isPanningCanvas = false; return; }
+            if (e.touches.length === 1) {
+                const dx = e.touches[0].clientX - canvasPanTouchStartX;
+                const dy = e.touches[0].clientY - canvasPanTouchStartY;
+                if (!canvasPanMoved && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+                    canvasPanMoved = true;
+                    isPanningCanvas = true;
+                }
+                if (isPanningCanvas) {
+                    e.preventDefault();
+                    const newPanX = (e.touches[0].clientX - panStartX) / zoomLevel;
+                    const newPanY = (e.touches[0].clientY - panStartY) / zoomLevel;
+                    const now = Date.now();
+                    const dt = Math.max(1, now - panLastTime);
+                    panVelX = (newPanX - panLastX) / dt * 16;
+                    panVelY = (newPanY - panLastY) / dt * 16;
+                    panLastX = newPanX; panLastY = newPanY; panLastTime = now;
+                    panX = newPanX; panY = newPanY;
+                    updateCanvasTransform();
+                }
             }
         }, { passive: false });
 
         document.addEventListener('touchend', () => {
+            if (isPanningCanvas && (Math.abs(panVelX) > 0.3 || Math.abs(panVelY) > 0.3)) {
+                const applyMomentum = () => {
+                    panVelX *= 0.90; panVelY *= 0.90;
+                    if (Math.abs(panVelX) < 0.05 && Math.abs(panVelY) < 0.05) {
+                        panMomentumRaf = null; return;
+                    }
+                    panX += panVelX; panY += panVelY;
+                    updateCanvasTransform();
+                    panMomentumRaf = requestAnimationFrame(applyMomentum);
+                };
+                panMomentumRaf = requestAnimationFrame(applyMomentum);
+            }
             isPanningCanvas = false;
         });
 
@@ -6582,6 +6611,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             document.removeEventListener('touchend', stopTouchDrag);
         }
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/ui/stl-viewer.js"></script>
     <script>
         // Initialize STL viewer on page load
