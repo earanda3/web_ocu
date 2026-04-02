@@ -1,4 +1,4 @@
-name: Deploy to Nominalia via FTP
+name: Deploy to Nominalia via Webhook
 
 on:
   push:
@@ -7,19 +7,15 @@ on:
 
 jobs:
   web-deploy:
-    name: 🎉 Deploy
+    name: 🎉 Deploy Webhook
     runs-on: ubuntu-latest
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
-
-    - name: 🗂️ Generate content manifest
-      run: python3 scripts/generate_manifest.py
-
-    - name: 📂 Sync files
-      uses: SamKirkland/FTP-Deploy-Action@4.3.3
-      with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        server-dir: /www/
+      
+    - name: 📦 Archive website
+      run: zip -r web_ocu.zip . -x "*.git*" ".github/*" "Backup*"
+      
+    - name: 🚀 Deploy to ocu.cat
+      run: |
+        curl -X POST --data-binary @web_ocu.zip "https://ocu.cat/github_deploy.php?token=${{ secrets.DEPLOY_TOKEN }}"
