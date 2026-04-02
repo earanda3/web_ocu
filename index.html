@@ -2710,7 +2710,7 @@
 
         // Global zoom and pan variables
         let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        let zoomLevel = isMobile ? 0.5 : 1;
+        let zoomLevel = isMobile ? 0.7 : 1;
         let panX = 0;
         let panY = 0;
 
@@ -3803,6 +3803,26 @@
 
         function updateCanvasTransform() {
             canvas.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+            window.panX = panX; window.panY = panY; window.zoomLevel = zoomLevel;
+        }
+
+        // Update STL renderer resolution to match current zoom (prevents pixelation)
+        let _stlQualityRaf = null;
+        function scheduleStlQualityUpdate() {
+            if (_stlQualityRaf) cancelAnimationFrame(_stlQualityRaf);
+            _stlQualityRaf = requestAnimationFrame(() => {
+                _stlQualityRaf = null;
+                if (!window.stlViewers || !window.stlViewers.length) return;
+                const dpr = Math.min((window.devicePixelRatio || 1) * Math.max(1, zoomLevel), 4);
+                window.stlViewers.forEach(v => {
+                    if (!v || !v.renderer || !v.container) return;
+                    const w = parseFloat(v.container.style.width) || 200;
+                    const h = parseFloat(v.container.style.height) || 200;
+                    v.renderer.setPixelRatio(dpr);
+                    v.renderer.setSize(w, h);
+                    if (v.camera) { v.camera.aspect = w / h; v.camera.updateProjectionMatrix(); }
+                });
+            });
         }
 
         // Mobile: double-tap detector to emulate context menu
@@ -5820,6 +5840,33 @@ openStlViewer('content/ocu3D/TukTuk.stl');
         let initialDistance = 0;
         let initialZoom = 1;
 
+        // Discrete snap zoom levels for mobile (4 levels)
+        const SNAP_ZOOM_LEVELS = [0.35, 0.7, 1.4, 3.0];
+        let snapZoomIdx = isMobile ? 1 : -1; // Start at 0.7 on mobile
+        let pinchSnapped = false;
+
+        function getNearestSnapIdx(zoom) {
+            let best = 0, bestDist = Infinity;
+            SNAP_ZOOM_LEVELS.forEach((l, i) => { const d = Math.abs(l - zoom); if (d < bestDist) { bestDist = d; best = i; } });
+            return best;
+        }
+
+        function applySnapZoom(newIdx, midX, midY) {
+            const oldZoom = zoomLevel;
+            const newZoom = SNAP_ZOOM_LEVELS[newIdx];
+            const canvasRect = canvas.getBoundingClientRect();
+            const logX = (midX - canvasRect.left) / oldZoom - panX;
+            const logY = (midY - canvasRect.top) / oldZoom - panY;
+            panX = (midX - canvasRect.left) / newZoom - logX;
+            panY = (midY - canvasRect.top) / newZoom - logY;
+            snapZoomIdx = newIdx;
+            zoomLevel = newZoom;
+            canvas.style.transition = 'transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)';
+            updateCanvasTransform();
+            scheduleStlQualityUpdate();
+            setTimeout(() => { canvas.style.transition = ''; }, 280);
+        }
+
         // Mobile touch controls: invisible d-pad in bottom 1/3 of screen
         let __dpadTracking = false;
         function getDpadDirectionAt(touch, rect) {
@@ -6012,10 +6059,11 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 panY += (newMouseY - mouseY);
 
                 updateCanvasTransform();
+                scheduleStlQualityUpdate();
             }
         });
 
-        // Touch pinch zoom (mobile) — zooms toward pinch center
+        // Touch pinch zoom — discrete snap on mobile, continuous on desktop
         let pinchMidX = 0, pinchMidY = 0;
         document.addEventListener('touchstart', (e) => {
             if (e.target && e.target.closest && (e.target.closest('#pdf-modal') || e.target.closest('#color-modal') || e.target.closest('#pdf-container') || e.target.closest('.stl-viewer-container'))) {
@@ -6027,9 +6075,12 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 initialDistance = Math.sqrt(dx * dx + dy * dy);
                 initialZoom = zoomLevel;
-                // Store pinch midpoint in canvas logical coords
                 pinchMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 pinchMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                if (isMobile) {
+                    pinchSnapped = false;
+                    snapZoomIdx = getNearestSnapIdx(zoomLevel);
+                }
             }
         }, { passive: false });
 
@@ -6044,15 +6095,28 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const rawFactor = distance / initialDistance;
-                const newZoom = Math.max(0.1, Math.min(5, initialZoom * rawFactor));
-                // Zoom toward pinch center: keep midpoint stable in logical coords
-                const canvasRect = canvas.getBoundingClientRect();
-                const logX = (pinchMidX - canvasRect.left) / zoomLevel - panX;
-                const logY = (pinchMidY - canvasRect.top) / zoomLevel - panY;
-                panX = (pinchMidX - canvasRect.left) / newZoom - logX;
-                panY = (pinchMidY - canvasRect.top) / newZoom - logY;
-                zoomLevel = newZoom;
-                updateCanvasTransform();
+                if (isMobile) {
+                    // Discrete snap: fire once per gesture when threshold crossed
+                    if (!pinchSnapped) {
+                        if (rawFactor > 1.2 && snapZoomIdx < SNAP_ZOOM_LEVELS.length - 1) {
+                            applySnapZoom(snapZoomIdx + 1, pinchMidX, pinchMidY);
+                            pinchSnapped = true;
+                        } else if (rawFactor < 0.83 && snapZoomIdx > 0) {
+                            applySnapZoom(snapZoomIdx - 1, pinchMidX, pinchMidY);
+                            pinchSnapped = true;
+                        }
+                    }
+                } else {
+                    // Desktop: continuous zoom toward pinch center
+                    const newZoom = Math.max(0.1, Math.min(5, initialZoom * rawFactor));
+                    const canvasRect = canvas.getBoundingClientRect();
+                    const logX = (pinchMidX - canvasRect.left) / zoomLevel - panX;
+                    const logY = (pinchMidY - canvasRect.top) / zoomLevel - panY;
+                    panX = (pinchMidX - canvasRect.left) / newZoom - logX;
+                    panY = (pinchMidY - canvasRect.top) / newZoom - logY;
+                    zoomLevel = newZoom;
+                    updateCanvasTransform();
+                }
             }
         }, { passive: false });
 
@@ -6090,6 +6154,10 @@ openStlViewer('content/ocu3D/TukTuk.stl');
 
         // Mobile canvas panning — fluid with momentum/inertia
         let canvasPanTouchStartX = 0, canvasPanTouchStartY = 0;
+        // Clear transition on pan start to avoid snap animation interfering
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1 && canvas.style.transition) canvas.style.transition = '';
+        }, { passive: true });
         let canvasPanMoved = false;
         let panVelX = 0, panVelY = 0;
         let panLastX = 0, panLastY = 0, panLastTime = 0;
