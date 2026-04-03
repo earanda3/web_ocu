@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Interactive Interface</title>
+    <title>ocu</title>
+    <link rel="icon" href="ocugat.svg" type="image/svg+xml">
     <link rel="stylesheet" href="lib/pdf-viewer.css">
     <style>
         * {
@@ -3054,23 +3055,37 @@
                 }
             } catch { }
 
-            // Convert canvas coords to client coords for event dispatch
-            const c = canvas.getBoundingClientRect();
-            const clientX = c.left + (x + (window.panX || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
-            const clientY = c.top + (y + (window.panY || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
-
-            // Find top-most element under head within app surfaces (canvas or PDF UIs), excluding snake/HUD
-            const els = document.elementsFromPoint(clientX, clientY) || [];
+            // Canvas-space AABB collision: robust on all devices/zoom levels (no elementsFromPoint)
+            const cRect = canvas.getBoundingClientRect();
+            const zl = window.zoomLevel || 1;
+            const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
             let target = null;
-            for (const el of els) {
+            const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
+            for (let i = candidates.length - 1; i >= 0; i--) {
+                const el = candidates[i];
                 if (!el) continue;
-                if (el.id === 'snake-layer' || el.id === 'snake-hud') continue;
-                // Skip maze handles but allow other interactions
+                if (el.closest && (el.closest('#snake-layer') || el.closest('#snake-hud') ||
+                    el.closest('#snake2-layer') || el.closest('#snake2-hud') || el.closest('#dpad-overlay'))) continue;
                 if (el.classList && (el.classList.contains('maze-resize-handle') || el.classList.contains('maze-move-handle'))) continue;
-                if (el.closest && (el.closest('#canvas') || el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
-                    target = el;
-                    break;
-                }
+                const r = el.getBoundingClientRect();
+                if (!r.width || !r.height) continue;
+                const elL = (r.left - cRect.left) / zl;
+                const elT = (r.top  - cRect.top)  / zl;
+                const elR = elL + r.width  / zl;
+                const elB = elT + r.height / zl;
+                if (headR > elL && x < elR && headB > elT && y < elB) { target = el; break; }
+            }
+            // Fallback: PDF elements may be outside canvas
+            if (!target) {
+                try {
+                    const cx2 = cRect.left + (x + SNAKE_SIZE / 2) * zl;
+                    const cy2 = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
+                    for (const el of (document.elementsFromPoint(cx2, cy2) || [])) {
+                        if (el.closest && (el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
+                            target = el; break;
+                        }
+                    }
+                } catch { }
             }
             if (!target) return;
 
@@ -3351,23 +3366,37 @@
                 }
             } catch { }
 
-            // Convert canvas coords to client coords for event dispatch
-            const c = canvas.getBoundingClientRect();
-            const clientX = c.left + (x + (window.panX || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
-            const clientY = c.top + (y + (window.panY || 0)) * (window.zoomLevel || 1) + SNAKE_SIZE / 2;
-
-            // Find top-most element under head within app surfaces (canvas or PDF UIs), excluding snake/HUD
-            const els = document.elementsFromPoint(clientX, clientY) || [];
+            // Canvas-space AABB collision: robust on all devices/zoom levels (no elementsFromPoint)
+            const cRect = canvas.getBoundingClientRect();
+            const zl = window.zoomLevel || 1;
+            const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
             let target = null;
-            for (const el of els) {
+            const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
+            for (let i = candidates.length - 1; i >= 0; i--) {
+                const el = candidates[i];
                 if (!el) continue;
-                if (el.id === 'snake2-layer' || el.id === 'snake2-hud') continue;
-                // Skip maze handles but allow other interactions
+                if (el.closest && (el.closest('#snake-layer') || el.closest('#snake-hud') ||
+                    el.closest('#snake2-layer') || el.closest('#snake2-hud') || el.closest('#dpad-overlay'))) continue;
                 if (el.classList && (el.classList.contains('maze-resize-handle') || el.classList.contains('maze-move-handle'))) continue;
-                if (el.closest && (el.closest('#canvas') || el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
-                    target = el;
-                    break;
-                }
+                const r = el.getBoundingClientRect();
+                if (!r.width || !r.height) continue;
+                const elL = (r.left - cRect.left) / zl;
+                const elT = (r.top  - cRect.top)  / zl;
+                const elR = elL + r.width  / zl;
+                const elB = elT + r.height / zl;
+                if (headR > elL && x < elR && headB > elT && y < elB) { target = el; break; }
+            }
+            // Fallback: PDF elements may be outside canvas
+            if (!target) {
+                try {
+                    const cx2 = cRect.left + (x + SNAKE_SIZE / 2) * zl;
+                    const cy2 = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
+                    for (const el of (document.elementsFromPoint(cx2, cy2) || [])) {
+                        if (el.closest && (el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
+                            target = el; break;
+                        }
+                    }
+                } catch { }
             }
             if (!target) return;
 
@@ -5468,19 +5497,8 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             // Make the about button draggable
             addWordDragEvents(aboutBtn);
 
-            // Open about page on right-click
-            aboutBtn.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                window.open('/about.html', '_blank');
-            });
-
-            // Alternative: Ctrl/Cmd + Click to open about page
-            aboutBtn.addEventListener('click', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    e.preventDefault();
-                    window.open('/about.html', '_blank');
-                }
-            });
+            // No click action: image is decorative/draggable only
+            aboutBtn.addEventListener('contextmenu', (e) => e.preventDefault());
         }
 
         // Initialize About button
