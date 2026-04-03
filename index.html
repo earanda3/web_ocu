@@ -750,6 +750,8 @@
                     try { document.removeEventListener('keydown', __introKeydownHandler, true); } catch { }
                     __introKeydownHandler = null;
                 }
+                // Override global ensureResetWord with local version before calling ensure fns
+                try { window.ensureResetWord = ensureResetWord; } catch { }
                 // Ensure all interactive words are present
                 const ensureFunctions = [
                     'ensureStopWord', 'ensureResetWord',
@@ -4323,15 +4325,12 @@
             resetWord.style.cursor = 'move';
             resetWord.style.userSelect = 'none';
             canvas.appendChild(resetWord);
-            try { placeElementInSafeArea(resetWord); } catch {
-                // Fallback: place near top of visible viewport in canvas coords
-                const z = window.zoomLevel || 1;
-                resetWord.style.left = Math.max(20, Math.round(window.innerWidth / z - 120)) + 'px';
-                resetWord.style.top = '20px';
-            }
+            // Place near the word cluster but outside typical maze bounds
+            const _rz = window.zoomLevel || 1;
+            resetWord.style.left = Math.floor(window.innerWidth  / _rz * 0.45) + 'px';
+            resetWord.style.top  = Math.floor(window.innerHeight / _rz * 0.08) + 'px';
             createWordSlotMachine(resetWord, 'reset');
             addWordDragEvents(resetWord);
-            window.ensureResetWord = ensureResetWord; // override global so placeElementInSafeArea version is used
             const doReset = () => {
                 // Remove all images spawned on canvas
                 try { canvas.querySelectorAll('img').forEach(img => img.remove()); } catch { }
@@ -4664,11 +4663,12 @@ pongWord.style.letterSpacing = '2px';
 pongWord.style.color = '#333';
 pongWord.style.cursor = 'move';
 pongWord.style.userSelect = 'none';
-const c = canvas.getBoundingClientRect();
-pongWord.style.left = Math.floor(180 + Math.random() * (c.width / zoomLevel - 300)) - panX + 'px';
-pongWord.style.top = Math.floor(180 + Math.random() * (c.height / zoomLevel - 300)) - panY + 'px';
+const _pz = window.zoomLevel || 1;
+const _pvw = Math.floor(window.innerWidth  / _pz);
+const _pvh = Math.floor(window.innerHeight / _pz);
+pongWord.style.left = Math.floor(_pvw * 0.10 + Math.random() * _pvw * 0.80) + 'px';
+pongWord.style.top  = Math.floor(_pvh * 0.20 + Math.random() * _pvh * 0.60) + 'px';
 canvas.appendChild(pongWord);
-placeElementInSafeArea(pongWord);
 createWordSlotMachine(pongWord, 'pong');
 addWordDragEvents(pongWord);
 
@@ -5020,15 +5020,18 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             createWordSlotMachine(stopWord, 'stop!');
             addWordDragEvents(stopWord);
             placeElementInSafeArea(stopWord);
-            // Right-click to freeze ALL slot machines (like other context actions)
-            stopWord.addEventListener('contextmenu', (e) => {
+            // Click/tap = toggle: stop if running, resume if already frozen
+            stopWord.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.__slotFrozen = true;
-                window.__introFrozen = true; // stop any remaining intro timers just in case
-                clearAllSlotIntervals();
-                // Visual feedback: dim STOP a bit
-                try { stopWord.style.opacity = '0.65'; } catch { }
+                if (window.__slotFrozen) {
+                    try { resumeAllSlotMachines(); } catch { }
+                } else {
+                    window.__slotFrozen = true;
+                    window.__introFrozen = true;
+                    try { clearAllSlotIntervals(); } catch { }
+                }
             });
+            stopWord.addEventListener('contextmenu', (e) => { e.preventDefault(); });
         }
 
 
