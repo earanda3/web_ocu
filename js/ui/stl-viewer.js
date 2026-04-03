@@ -346,15 +346,17 @@ function enableStlResize(container, viewer) {
         wrapper.addEventListener('touchstart', (evt) => {
             if (evt.touches.length === 2) {
                 evt.preventDefault();
+                evt.stopPropagation();
                 const dx = evt.touches[0].clientX - evt.touches[1].clientX;
                 const dy = evt.touches[0].clientY - evt.touches[1].clientY;
                 pinchDist = Math.sqrt(dx * dx + dy * dy);
                 pinchSize = parseFloat(wrapper.style.width);
             }
-        });
+        }, { passive: false });
         wrapper.addEventListener('touchmove', (evt) => {
             if (evt.touches.length === 2) {
                 evt.preventDefault();
+                evt.stopPropagation();
                 const dx = evt.touches[0].clientX - evt.touches[1].clientX;
                 const dy = evt.touches[0].clientY - evt.touches[1].clientY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -363,7 +365,7 @@ function enableStlResize(container, viewer) {
                 wrapper.style.width = newSize + 'px';
                 wrapper.style.height = newSize + 'px';
             }
-        });
+        }, { passive: false });
         
         // Store viewer reference for color selection
         wrapper.viewerRef = viewer;
@@ -429,17 +431,27 @@ function enableStlResize(container, viewer) {
         };
         
         wrapper.addEventListener('click', selectColor);
-        // Touch support: tap or drag finger on colorPicker to select colour
-        const _touchSelect = (evt) => {
-            evt.preventDefault();
-            evt.stopPropagation();
-            const t = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]);
-            if (!t) return;
-            selectColor({ clientX: t.clientX, clientY: t.clientY, preventDefault: ()=>{}, stopPropagation: ()=>{} });
-        };
-        colorPicker.addEventListener('touchstart', _touchSelect, { passive: false });
-        colorPicker.addEventListener('touchmove',  _touchSelect, { passive: false });
-        colorPicker.addEventListener('touchend',   _touchSelect, { passive: false });
+        // Touch: 1-finger tap on colorPicker = select color; drag propagates to addWordDragEvents
+        let _tapStart = null;
+        colorPicker.addEventListener('touchstart', (evt) => {
+            if (evt.touches.length === 1)
+                _tapStart = { x: evt.touches[0].clientX, y: evt.touches[0].clientY };
+        }, { passive: true });
+        colorPicker.addEventListener('touchmove', (evt) => {
+            if (_tapStart && evt.touches.length === 1) {
+                const _dx = evt.touches[0].clientX - _tapStart.x;
+                const _dy = evt.touches[0].clientY - _tapStart.y;
+                if (Math.sqrt(_dx * _dx + _dy * _dy) > 10) _tapStart = null;
+            }
+        }, { passive: true });
+        colorPicker.addEventListener('touchend', (evt) => {
+            if (_tapStart && evt.changedTouches.length === 1) {
+                evt.preventDefault();
+                const t = evt.changedTouches[0];
+                selectColor({ clientX: t.clientX, clientY: t.clientY, preventDefault: ()=>{}, stopPropagation: ()=>{} });
+            }
+            _tapStart = null;
+        }, { passive: false });
         wrapper.addEventListener('mousedown', (evt) => {
             if (evt.target === wrapper || evt.target === colorPicker || evt.target.parentNode === colorPicker) {
                 selectColor(evt);
