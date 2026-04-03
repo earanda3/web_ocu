@@ -2723,6 +2723,7 @@
         let snakeDir = 'right'; // 'up','down','left','right'
         let snake = [];
         let snakeTimer = null;
+        let snakeLastHitEl = null; // edge-triggered: track last word the head was on
         let snakeLayer = null;
         const SNAKE_SIZE = 10; // px
         let snakeScore = 0;
@@ -3058,6 +3059,8 @@
             // Canvas-space AABB collision: robust on all devices/zoom levels (no elementsFromPoint)
             const cRect = canvas.getBoundingClientRect();
             const zl = window.zoomLevel || 1;
+            const clientX = cRect.left + (x + SNAKE_SIZE / 2) * zl;
+            const clientY = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
             const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
             let target = null;
             const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
@@ -3075,19 +3078,21 @@
                 const elB = elT + r.height / zl;
                 if (headR > elL && x < elR && headB > elT && y < elB) { target = el; break; }
             }
-            // Fallback: PDF elements may be outside canvas
+            // Fallback: elements outside canvas (PDF modals, floating panels, open editor windows)
             if (!target) {
                 try {
-                    const cx2 = cRect.left + (x + SNAKE_SIZE / 2) * zl;
-                    const cy2 = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
-                    for (const el of (document.elementsFromPoint(cx2, cy2) || [])) {
-                        if (el.closest && (el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
-                            target = el; break;
-                        }
+                    for (const el of (document.elementsFromPoint(clientX, clientY) || [])) {
+                        if (!el || el === document.body || el === document.documentElement) continue;
+                        if (el.closest && el.closest('#canvas')) continue;
+                        if (el.closest && (el.closest('#snake-layer') || el.closest('#snake-hud') ||
+                            el.closest('#snake2-layer') || el.closest('#snake2-hud') ||
+                            el.closest('#dpad-overlay') || el.closest('#color-modal'))) continue;
+                        const r2 = el.getBoundingClientRect();
+                        if (r2.width > 0 && r2.height > 0) { target = el; break; }
                     }
                 } catch { }
             }
-            if (!target) return;
+            if (!target) { snakeLastHitEl = null; return; }
 
             // If we hit a letter/span inside a word, promote target to its actionable ancestor
             if (target.closest) {
@@ -3196,6 +3201,11 @@
                 return false;
             }
 
+            // Edge-triggered: only activate a word once per entry (prevents repeated laberint spawns etc.)
+            // color-word and pixel-word already returned early above and are unaffected.
+            if (target === snakeLastHitEl) return false;
+            snakeLastHitEl = target;
+
             // Dispatch a synthetic contextmenu at head position on the promoted target
             const evt = new MouseEvent('contextmenu', {
                 bubbles: true,
@@ -3217,6 +3227,7 @@
         let snake2Dir = 'right';
         let snake2Score = 0;
         let snake2Timer = null;
+        let snake2LastHitEl = null; // edge-triggered: track last word the head was on
         let snake2Hud = document.getElementById('snake2-hud');
 
         // Ensure second snake layer exists
@@ -3369,6 +3380,8 @@
             // Canvas-space AABB collision: robust on all devices/zoom levels (no elementsFromPoint)
             const cRect = canvas.getBoundingClientRect();
             const zl = window.zoomLevel || 1;
+            const clientX = cRect.left + (x + SNAKE_SIZE / 2) * zl;
+            const clientY = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
             const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
             let target = null;
             const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
@@ -3386,19 +3399,21 @@
                 const elB = elT + r.height / zl;
                 if (headR > elL && x < elR && headB > elT && y < elB) { target = el; break; }
             }
-            // Fallback: PDF elements may be outside canvas
+            // Fallback: elements outside canvas (PDF modals, floating panels, open editor windows)
             if (!target) {
                 try {
-                    const cx2 = cRect.left + (x + SNAKE_SIZE / 2) * zl;
-                    const cy2 = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
-                    for (const el of (document.elementsFromPoint(cx2, cy2) || [])) {
-                        if (el.closest && (el.closest('#pdf-modal') || el.closest('#pdf-container'))) {
-                            target = el; break;
-                        }
+                    for (const el of (document.elementsFromPoint(clientX, clientY) || [])) {
+                        if (!el || el === document.body || el === document.documentElement) continue;
+                        if (el.closest && el.closest('#canvas')) continue;
+                        if (el.closest && (el.closest('#snake-layer') || el.closest('#snake-hud') ||
+                            el.closest('#snake2-layer') || el.closest('#snake2-hud') ||
+                            el.closest('#dpad-overlay') || el.closest('#color-modal'))) continue;
+                        const r2 = el.getBoundingClientRect();
+                        if (r2.width > 0 && r2.height > 0) { target = el; break; }
                     }
                 } catch { }
             }
-            if (!target) return;
+            if (!target) { snake2LastHitEl = null; return; }
 
             // If we hit a letter/span inside a word, promote target to its actionable ancestor
             if (target.closest) {
@@ -3506,6 +3521,10 @@
 
                 return false;
             }
+
+            // Edge-triggered: only activate a word once per entry
+            if (target === snake2LastHitEl) return false;
+            snake2LastHitEl = target;
 
             // Dispatch a synthetic contextmenu at head position on the promoted target
             const evt = new MouseEvent('contextmenu', {
@@ -6746,6 +6765,41 @@ openStlViewer('content/ocu3D/TukTuk.stl');
         // Initialize STL viewer on page load
         if (typeof initStlViewer === 'function') {
             initStlViewer();
+        }
+
+        // Track which canvas word was clicked/right-clicked so STL spawns near it
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest && e.target.closest('#canvas a');
+            if (a) window.__stlSpawnOriginEl = a;
+        }, true);
+        document.addEventListener('contextmenu', (e) => {
+            const a = e.target.closest && e.target.closest('#canvas a');
+            if (a) window.__stlSpawnOriginEl = a;
+        }, true);
+
+        // Mobile: rearrange initial inline words into a vertical column
+        if (window.isMobile) {
+            requestAnimationFrame(() => {
+                const colX = 40;
+                let y = 120;
+                const rowH = 55;
+                [
+                    'tao', 'color-word', 'newtro-word',
+                    'cw-ocu', 'cw-ocu3d', 'cw-zines',
+                    'serp-word', 'soroboru-word', 'afegir-word',
+                    'arxius-word', 'tecla-link-word', 'ordre-word'
+                ].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.style.position = 'absolute';
+                    el.style.left = colX + 'px';
+                    el.style.top = y + 'px';
+                    el.style.transform = '';
+                    y += rowH;
+                });
+                const aboutBtn = document.getElementById('about-btn');
+                if (aboutBtn) { aboutBtn.style.left = '20px'; aboutBtn.style.top = '20px'; }
+            });
         }
     </script>
 </body>

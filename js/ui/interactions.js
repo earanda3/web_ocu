@@ -229,17 +229,40 @@ function placeNextToReference(img, force = false) {
 }
 
 function placeElementInSafeArea(el) {
-    const vw = Math.floor(window.innerWidth / (window.zoomLevel || 1));
-    const vh = Math.floor(window.innerHeight / (window.zoomLevel || 1));
-    const margin = 100;
+    const zl = window.zoomLevel || 1;
+    const vw = Math.floor(window.innerWidth / zl);
+    const vh = Math.floor(window.innerHeight / zl);
+    const margin = 60;
     const w = el.offsetWidth || 100;
     const h = el.offsetHeight || 40;
+    const canvas = window.canvas || document.getElementById('canvas');
 
-    const left = Math.max(margin, Math.floor(Math.random() * (vw - w - margin * 2)));
-    const top = Math.max(margin, Math.floor(Math.random() * (vh - h - margin * 2)));
+    function overlaps(x, y) {
+        if (!canvas) return false;
+        const siblings = canvas.querySelectorAll('a, img, .stl-viewer-container');
+        for (const s of siblings) {
+            if (s === el) continue;
+            const sl = parseFloat(s.style.left) || 0;
+            const st = parseFloat(s.style.top)  || 0;
+            const sw = s.offsetWidth  || 80;
+            const sh = s.offsetHeight || 30;
+            const pad = 24;
+            if (x < sl + sw + pad && x + w + pad > sl && y < st + sh + pad && y + h + pad > st) return true;
+        }
+        return false;
+    }
+
+    const maxX = Math.max(margin, vw - w - margin);
+    const maxY = Math.max(margin, vh - h - margin);
+    let left, top, tries = 0;
+    do {
+        left = Math.floor(margin + Math.random() * (maxX - margin));
+        top  = Math.floor(margin + Math.random() * (maxY - margin));
+        tries++;
+    } while (overlaps(left, top) && tries < 20);
 
     el.style.left = left + 'px';
-    el.style.top = top + 'px';
+    el.style.top  = top  + 'px';
 }
 
 // Create currency slot machine with typography effects
@@ -507,7 +530,7 @@ function enableEdgeDragResize(img) {
         start.top = parseFloat(img.style.top) || ((rect.top - canvas.getBoundingClientRect().top) / zoomLevel - panY);
         start.width = parseFloat(img.style.width) || (rect.width / zoomLevel);
         start.height = parseFloat(img.style.height) || (rect.height / zoomLevel);
-        start.ratio = (start.height / start.width) || 1;
+        start.ratio = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : ((start.height / start.width) || 1);
         document.body.style.cursor = img.style.cursor || 'nwse-resize';
     });
 
@@ -575,8 +598,9 @@ function enablePinchResize(img) {
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             pinch.dist = Math.hypot(dx, dy);
             const w = parseFloat(img.style.width) || img.clientWidth || 60;
-            const h = parseFloat(img.style.height) || img.clientHeight || (w * (img.naturalHeight / img.naturalWidth || 1));
-            pinch.width = w; pinch.height = h; pinch.ratio = h / w; pinch.active = true;
+            const naturalRatio = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : null;
+            const h = parseFloat(img.style.height) || img.clientHeight || (w * (naturalRatio || 1));
+            pinch.width = w; pinch.height = h; pinch.ratio = naturalRatio || (h / w) || 1; pinch.active = true;
         }
     }, { passive: false });
 

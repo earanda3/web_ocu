@@ -33,15 +33,41 @@ function openStlViewer(filePath) {
     const zoomLevel = window.zoomLevel || 1;
     const panX = window.panX || 0;
     const panY = window.panY || 0;
-    
-    // Random position within canvas safe area
-    const margin = 100;
-    const logicalW = canvasRect.width / zoomLevel;
-    const logicalH = canvasRect.height / zoomLevel;
-    const maxX = Math.max(100, logicalW - randomSize - margin);
-    const maxY = Math.max(100, logicalH - randomSize - margin);
-    const randomX = Math.max(0, margin + Math.random() * (maxX - margin)) - panX;
-    const randomY = Math.max(0, margin + Math.random() * (maxY - margin)) - panY;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Gaussian helper (Box-Muller)
+    function gaussRand() {
+        let u = 0, v = 0;
+        while (!u) u = Math.random();
+        while (!v) v = Math.random();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    // Canvas CSS bounds (0 to full canvas size)
+    const canvasCSSW = canvasRect.width / zoomLevel;
+    const canvasCSSH = canvasRect.height / zoomLevel;
+    const maxX = Math.max(0, canvasCSSW - randomSize);
+    const maxY = Math.max(0, canvasCSSH - randomSize);
+
+    // Spread = 30% of the smaller viewport dimension in canvas CSS space
+    const sigma = Math.min(vw, vh) * 0.3 / zoomLevel;
+
+    // Determine center: use triggering word if available, otherwise visible viewport center
+    const originEl = window.__stlSpawnOriginEl || null;
+    window.__stlSpawnOriginEl = null;
+    let centerX, centerY;
+    if (originEl) {
+        const wRect = originEl.getBoundingClientRect();
+        centerX = (wRect.left + wRect.width  / 2 - canvasRect.left) / zoomLevel;
+        centerY = (wRect.top  + wRect.height / 2 - canvasRect.top)  / zoomLevel;
+    } else {
+        centerX = vw / (2 * zoomLevel) - panX;
+        centerY = vh / (2 * zoomLevel) - panY;
+    }
+
+    const randomX = Math.max(0, Math.min(maxX, centerX - randomSize / 2 + gaussRand() * sigma));
+    const randomY = Math.max(0, Math.min(maxY, centerY - randomSize / 2 + gaussRand() * sigma));
     
     viewerContainer.style.left = randomX + 'px';
     viewerContainer.style.top = randomY + 'px';

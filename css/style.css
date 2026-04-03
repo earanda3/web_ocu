@@ -37,8 +37,8 @@ body {
 }
 
 /* Use O-Regular font in app modals */
-.color-modal, .color-modal * { font-family: 'O-Regular', serif; }
-.pdf-modal, .pdf-modal * { font-family: 'O-Regular', serif; }
+.color-modal, .color-modal * { font-family: 'O-Regular', Helvetica, Arial, sans-serif; }
+.pdf-modal, .pdf-modal * { font-family: 'O-Regular', Helvetica, Arial, sans-serif; }
 
 #tao {
     position: absolute;
@@ -80,7 +80,7 @@ body {
 }
 
 .font-oregular {
-    font-family: 'O-Regular', serif;
+    font-family: 'O-Regular', Helvetica, Arial, sans-serif;
     font-size: 1.4em; /* O-Regular més gran */
 }
 
