@@ -429,6 +429,17 @@ function enableStlResize(container, viewer) {
         };
         
         wrapper.addEventListener('click', selectColor);
+        // Touch support: tap or drag finger on colorPicker to select colour
+        const _touchSelect = (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            const t = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]);
+            if (!t) return;
+            selectColor({ clientX: t.clientX, clientY: t.clientY, preventDefault: ()=>{}, stopPropagation: ()=>{} });
+        };
+        colorPicker.addEventListener('touchstart', _touchSelect, { passive: false });
+        colorPicker.addEventListener('touchmove',  _touchSelect, { passive: false });
+        colorPicker.addEventListener('touchend',   _touchSelect, { passive: false });
         wrapper.addEventListener('mousedown', (evt) => {
             if (evt.target === wrapper || evt.target === colorPicker || evt.target.parentNode === colorPicker) {
                 selectColor(evt);
@@ -577,7 +588,9 @@ function enableStlResize(container, viewer) {
         baseScale: 1,
         lastCentroid: { x: 0, y: 0 },
         baseOpacity: 1,
-        lastTap: 0
+        lastTap: 0,
+        dist3: 0,
+        baseScale3: 1
     };
     container.style.touchAction = 'none'; // Prevent browser defaults like scroll/zoom
     
@@ -623,6 +636,11 @@ function enableStlResize(container, viewer) {
             if (viewer.mesh && viewer.mesh.material) {
                 touchState.baseOpacity = viewer.mesh.material.opacity;
             }
+            // Prepare for scale (3-finger pinch)
+            const _d3x = e.touches[0].clientX - e.touches[1].clientX;
+            const _d3y = e.touches[0].clientY - e.touches[1].clientY;
+            touchState.dist3 = Math.sqrt(_d3x * _d3x + _d3y * _d3y);
+            if (viewer.mesh) touchState.baseScale3 = viewer.mesh.scale.x;
         }
     });
 
@@ -645,22 +663,31 @@ function enableStlResize(container, viewer) {
             touchState.lastCentroid = centroid;
         } else if (e.touches.length === 3) {
             e.preventDefault();
-            if (!viewer.mesh || !viewer.mesh.material) return;
+            if (!viewer.mesh) return;
+            
+            // Handle Scale (3-finger pinch distance)
+            if (touchState.dist3 > 0) {
+                const _d3x = e.touches[0].clientX - e.touches[1].clientX;
+                const _d3y = e.touches[0].clientY - e.touches[1].clientY;
+                const _dist3 = Math.sqrt(_d3x * _d3x + _d3y * _d3y);
+                const _sf = _dist3 / touchState.dist3;
+                const _ns = Math.min(3, Math.max(0.3, touchState.baseScale3 * _sf));
+                viewer.mesh.scale.set(_ns, _ns, _ns);
+            }
             
             // Handle Opacity (3-finger vertical drag)
-            const centroid = {
-                x: (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3,
-                y: (e.touches[0].clientY + e.touches[1].clientY + e.touches[2].clientY) / 3
-            };
-            const deltaY = centroid.y - touchState.lastCentroid.y;
-            
-            // Move UP (negative deltaY) increases opacity, move DOWN decreases
-            const opacityChange = -deltaY * 0.005;
-            const newOpacity = Math.min(1, Math.max(0.1, touchState.baseOpacity + opacityChange));
-            
-            viewer.mesh.material.opacity = newOpacity;
-            touchState.baseOpacity = newOpacity;
-            touchState.lastCentroid = centroid;
+            if (viewer.mesh.material) {
+                const centroid = {
+                    x: (e.touches[0].clientX + e.touches[1].clientX + e.touches[2].clientX) / 3,
+                    y: (e.touches[0].clientY + e.touches[1].clientY + e.touches[2].clientY) / 3
+                };
+                const deltaY = centroid.y - touchState.lastCentroid.y;
+                const opacityChange = -deltaY * 0.005;
+                const newOpacity = Math.min(1, Math.max(0.1, touchState.baseOpacity + opacityChange));
+                viewer.mesh.material.opacity = newOpacity;
+                touchState.baseOpacity = newOpacity;
+                touchState.lastCentroid = centroid;
+            }
         }
     });
 
