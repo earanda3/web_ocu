@@ -635,11 +635,10 @@ function enhanceImage(img) {
         img.style.left = Math.round(left) + 'px';
         img.style.top = Math.round(top) + 'px';
     }
-    // Ensure explicit width/height for stable resizing
-    const w = img.clientWidth || img.width || 120;
-    const ratio = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : 1;
-    if (!img.style.width) img.style.width = w + 'px';
-    if (!img.style.height) img.style.height = Math.max(1, Math.round((parseFloat(img.style.width) || w) * ratio)) + 'px';
+    // Always start with height:auto so the browser preserves the natural aspect ratio
+    const cssW = parseFloat(img.style.width) || img.clientWidth || img.width || 120;
+    if (!img.style.width) img.style.width = cssW + 'px';
+    img.style.height = 'auto'; // browser maintains aspect ratio until user resizes
     // Interactions
     enableShiftWheelResize(img);
     enableEdgeDragResize(img);
@@ -649,16 +648,19 @@ function enhanceImage(img) {
     // Mark when the user moves/resizes this image to stop auto-placement
     img.addEventListener('mouseup', () => { img.dataset.userMoved = '1'; });
     img.addEventListener('touchend', () => { img.dataset.userMoved = '1'; });
-    // If spawned by the snake, randomize size and place in safe random area, then skip auto-placement
+    // If spawned by the snake, randomize size — defer height to onload for correct aspect ratio
     if (window.__spawnFromSnake) {
-        try {
-            const minW = 120, maxW = 480;
-            const rw = Math.floor(minW + Math.random() * (maxW - minW));
-            img.style.width = rw + 'px';
-            img.style.height = Math.max(1, Math.round(rw * ratio)) + 'px';
-            placeElementInSafeArea(img);
-            img.dataset.userMoved = '1';
-        } catch { }
+        const minW = 120, maxW = 480;
+        const rw = Math.floor(minW + Math.random() * (maxW - minW));
+        img.style.width = rw + 'px';
+        const _fixSnakeH = () => {
+            const r = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : null;
+            img.style.height = r ? Math.max(1, Math.round(rw * r)) + 'px' : 'auto';
+        };
+        if (img.complete && img.naturalWidth) { _fixSnakeH(); }
+        else { img.addEventListener('load', _fixSnakeH, { once: true }); }
+        try { placeElementInSafeArea(img); } catch { }
+        img.dataset.userMoved = '1';
     } else {
         // Default placement next to the reference logo and same size
         placeNextToReference(img);

@@ -109,11 +109,10 @@ function openStlViewer(filePath) {
     closeBtn.style.cssText = `
         position: absolute; right: 4px; top: 2px;
         cursor: pointer; font-size: 18px; line-height: 1;
-        color: rgba(255,255,255,0.7); z-index: 200;
+        color: transparent; z-index: 200;
         width: 20px; height: 20px; display: flex;
         align-items: center; justify-content: center;
         pointer-events: auto; user-select: none;
-        text-shadow: 0 0 3px rgba(0,0,0,0.8);
     `;
     const removeViewer = () => {
         const idx = stlViewers.indexOf(viewer);
@@ -632,17 +631,7 @@ function enableStlResize(container, viewer) {
             e.preventDefault();
             if (!viewer.mesh) return;
             
-            // Handle Scale (Pinch)
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (touchState.dist > 0) {
-                const scaleFactor = dist / touchState.dist;
-                const newScale = Math.min(3, Math.max(0.3, touchState.baseScale * scaleFactor));
-                viewer.mesh.scale.set(newScale, newScale, newScale);
-            }
-            
-            // Handle Rotation (2-finger drag/pan)
+            // Handle Rotation only (2-finger drag) — no scale change
             const centroid = {
                 x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
                 y: (e.touches[0].clientY + e.touches[1].clientY) / 2

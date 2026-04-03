@@ -188,12 +188,7 @@
         }
 
         #snake2-hud {
-            position: fixed;
-            left: 16px;
-            top: 12px;
-            z-index: 9999;
-            color: #333;
-            user-select: none;
+            display: none;
         }
 
         #snake2-hud.hidden {
@@ -757,7 +752,7 @@
                 }
                 // Ensure all interactive words are present
                 const ensureFunctions = [
-                    'ensureStopWord', 'ensureTextWord', 'ensureResetWord',
+                    'ensureStopWord', 'ensureResetWord',
                     'ensureSerpWord', 'ensureSoroBoruWord',
                     'ensurePixelWord', 'ensureLaberintWord', 'ensurePongWord',
                     'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord'
@@ -1343,14 +1338,6 @@
                     try { arrangeWordsAlphabetically(); } catch { }
                     return;
                 }
-                case 'text-word': { // open simple text editor
-                    try { openTextEditorModal(); } catch { }
-                    return;
-                }
-                case 'lletres-word': { // open writer modal
-                    try { openWriterModal(); } catch { }
-                    return;
-                }
                 case 'start-word': { // resume slot machines
                     try { resumeAllSlotMachines(); } catch { }
                     return;
@@ -1377,10 +1364,6 @@
                         try { toggleSnake(); } catch { }
                     } else if (wordText === '*') {
                         try { arrangeWordsAlphabetically(); } catch { }
-                    } else if (wordText === 'text') {
-                        try { openTextEditorModal(); } catch { }
-                    } else if (wordText === 'lletres') {
-                        try { openWriterModal(); } catch { }
                     }
                 }
             }
@@ -1406,7 +1389,7 @@
 
                     // Activate this word's behavior (except lletres/text)
                     const wordId = word.id || '';
-                    if (wordId !== 'lletres-word' && wordId !== 'text-word') {
+                    if (wordId !== 'lletres-word') {
                         try { activateWordElement(word, wordText); } catch { }
                     }
 
@@ -1709,13 +1692,10 @@
                 const txt = Array.from(el.querySelectorAll('.letter')).map(s => s.textContent).join('') || (el.textContent || '').trim();
                 if (txt) createWordSlotMachine(el, txt);
             });
-            // Re-init text-word with fixed font animation
+            // (text-word removed)
             try {
                 const tw = document.getElementById('text-word');
-                if (tw) {
-                    const txt = Array.from(tw.querySelectorAll('.letter')).map(s => s.textContent).join('') || (tw.textContent || '').trim() || 'text';
-                    createWordSlotMachineFixedFont(tw, txt, 'font-oregular');
-                }
+                if (tw) { tw.remove(); }
             } catch { }
             // Re-init file words
             document.querySelectorAll('#canvas .file-word').forEach(el => {
@@ -2579,7 +2559,7 @@
         // Helper: return only app words (no images/pdf), excluding some ids
         function getAllDraggableWords(options = {}) {
             const excludeIds = new Set(options.excludeIds || []);
-            const controlIds = ['tao', 'color-word', 'newtro-word', 'randomizer', 'reset-word', 'stop-word', 'start-word', 'unitat-word', 'text-word', 'laberint-word', 'currency'];
+            const controlIds = ['tao', 'color-word', 'newtro-word', 'randomizer', 'reset-word', 'stop-word', 'start-word', 'unitat-word', 'laberint-word', 'currency'];
             const list = [];
             controlIds.forEach(id => { const el = document.getElementById(id); if (el && !excludeIds.has(id)) list.push(el); });
             document.querySelectorAll('#canvas .file-word').forEach(el => { if (!excludeIds.has(el.id)) list.push(el); });
@@ -3201,6 +3181,13 @@
                 return false;
             }
 
+            // Eat user-added words (created via Afegir) — remove them and grow
+            if (target.dataset && target.dataset.userAdded === '1') {
+                try { target.remove(); } catch { }
+                snakeLastHitEl = null;
+                return true;
+            }
+
             // Edge-triggered: only activate a word once per entry (prevents repeated laberint spawns etc.)
             // color-word and pixel-word already returned early above and are unaffected.
             if (target === snakeLastHitEl) return false;
@@ -3520,6 +3507,13 @@
                 snake2Active = false;
 
                 return false;
+            }
+
+            // Eat user-added words (created via Afegir) — remove them and grow
+            if (target.dataset && target.dataset.userAdded === '1') {
+                try { target.remove(); } catch { }
+                snake2LastHitEl = null;
+                return true;
             }
 
             // Edge-triggered: only activate a word once per entry
@@ -3979,28 +3973,6 @@
         createWordSlotMachine(tao, 'tao');
         addWordDragEvents(tao);
 
-        // Create lletres element for custom text input
-        const lletresWord = document.createElement('a');
-        lletresWord.id = 'lletres-word';
-        lletresWord.className = 'maze-el';
-        lletresWord.style.position = 'absolute';
-        lletresWord.style.fontSize = '24px';
-        lletresWord.style.fontFamily = '"O-Regular", serif';
-        lletresWord.style.color = '#333';
-        lletresWord.style.textDecoration = 'none';
-        lletresWord.style.cursor = 'move';
-        lletresWord.style.userSelect = 'none';
-        canvas.appendChild(lletresWord);
-        try { placeElementInSafeArea(lletresWord); } catch { }
-        try { createWordSlotMachine(lletresWord, 'lletres'); } catch { lletresWord.textContent = 'lletres'; }
-        try { addWordDragEvents(lletresWord); } catch { }
-
-        // Right-click opens text input modal
-        lletresWord.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            openWriterModal();
-        });
-
         // Initialize color word with slot machine effect and drag
         if (colorWord) {
             createWordSlotMachine(colorWord, 'color');
@@ -4178,23 +4150,48 @@
         if (afegirEl) {
             createWordSlotMachine(afegirEl, 'Afegir');
             addWordDragEvents(afegirEl);
-            afegirEl.addEventListener('click', (e) => {
-                e.preventDefault();
-                const wordText = window.prompt('Escriu una paraula:');
-                if (!wordText || !wordText.trim()) return;
-                const newEl = document.createElement('a');
-                newEl.href = '#';
-                newEl.style.position = 'absolute';
-                newEl.style.fontSize = '24px';
-                newEl.style.letterSpacing = '2px';
-                newEl.style.color = (window.__currentElColor || '#333');
-                newEl.style.cursor = 'move';
-                newEl.style.userSelect = 'none';
-                canvas.appendChild(newEl);
-                placeElementInSafeArea(newEl);
-                createWordSlotMachine(newEl, wordText.trim());
-                addWordDragEvents(newEl);
-            });
+            function openAfegirModal() {
+                const overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.25)';
+                const box = document.createElement('div');
+                box.style.cssText = 'background:white;padding:32px 28px 24px;font-family:"Courier New",monospace;min-width:280px;box-shadow:0 4px 24px rgba(0,0,0,0.18)';
+                box.innerHTML = `
+                    <div style="font-size:14px;margin-bottom:14px;font-family:'Courier New',monospace;color:#111;letter-spacing:1px;">Escriu una paraula:</div>
+                    <input id="_afegir_inp" type="text" style="width:100%;box-sizing:border-box;border:none;border-bottom:2px solid #111;font-family:'Courier New',monospace;font-size:22px;padding:4px 0;outline:none;background:white;color:#111;letter-spacing:2px;"/>
+                    <div style="margin-top:22px;display:flex;justify-content:flex-end;gap:12px;">
+                        <button id="_afegir_cancel" style="font-family:'Courier New',monospace;font-size:13px;background:white;border:1px solid #999;padding:6px 14px;cursor:pointer;color:#555;">Cancel·lar</button>
+                        <button id="_afegir_ok" style="font-family:'Courier New',monospace;font-size:13px;background:#111;color:white;border:none;padding:6px 14px;cursor:pointer;">Afegir</button>
+                    </div>`;
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+                const inp = box.querySelector('#_afegir_inp');
+                setTimeout(() => inp.focus(), 50);
+                function closeOverlay() { overlay.remove(); }
+                function addWord() {
+                    const wordText = inp.value.trim();
+                    closeOverlay();
+                    if (!wordText) return;
+                    const newEl = document.createElement('a');
+                    newEl.href = '#';
+                    newEl.dataset.userAdded = '1';
+                    newEl.style.position = 'absolute';
+                    newEl.style.fontSize = '24px';
+                    newEl.style.letterSpacing = '2px';
+                    newEl.style.color = (window.__currentElColor || '#333');
+                    newEl.style.cursor = 'move';
+                    newEl.style.userSelect = 'none';
+                    canvas.appendChild(newEl);
+                    placeElementInSafeArea(newEl);
+                    createWordSlotMachine(newEl, wordText);
+                    addWordDragEvents(newEl);
+                }
+                box.querySelector('#_afegir_cancel').onclick = closeOverlay;
+                box.querySelector('#_afegir_ok').onclick = addWord;
+                inp.onkeydown = (e) => { if (e.key === 'Enter') addWord(); if (e.key === 'Escape') closeOverlay(); };
+                overlay.onclick = (e) => { if (e.target === overlay) closeOverlay(); };
+            }
+            afegirEl.addEventListener('click', (e) => { e.preventDefault(); openAfegirModal(); });
+            afegirEl.addEventListener('contextmenu', (e) => { e.preventDefault(); openAfegirModal(); });
         }
 
         // ── Setup: Arxius ──────────────────────────────────────────────────────
@@ -4312,7 +4309,7 @@
             }
         }
 
-        // Draggable RESET word — fixed bottom-right (always outside laberint range)
+        // Draggable RESET word — placed in safe visible area
         function ensureResetWord() {
             let resetWord = document.getElementById('reset-word');
             if (resetWord) return;
@@ -4325,12 +4322,16 @@
             resetWord.style.color = '#333';
             resetWord.style.cursor = 'move';
             resetWord.style.userSelect = 'none';
-            // Fixed bottom-right so it's always reachable outside any maze
-            resetWord.style.right = '24px';
-            resetWord.style.bottom = '24px';
             canvas.appendChild(resetWord);
+            try { placeElementInSafeArea(resetWord); } catch {
+                // Fallback: place near top of visible viewport in canvas coords
+                const z = window.zoomLevel || 1;
+                resetWord.style.left = Math.max(20, Math.round(window.innerWidth / z - 120)) + 'px';
+                resetWord.style.top = '20px';
+            }
             createWordSlotMachine(resetWord, 'reset');
             addWordDragEvents(resetWord);
+            window.ensureResetWord = ensureResetWord; // override global so placeElementInSafeArea version is used
             const doReset = () => {
                 // Remove all images spawned on canvas
                 try { canvas.querySelectorAll('img').forEach(img => img.remove()); } catch { }
@@ -5880,9 +5881,9 @@ openStlViewer('content/ocu3D/TukTuk.stl');
         let initialDistance = 0;
         let initialZoom = 1;
 
-        // Discrete snap zoom levels for mobile (4 levels)
-        const SNAP_ZOOM_LEVELS = [0.35, 0.7, 1.4, 3.0];
-        let snapZoomIdx = isMobile ? 1 : -1; // Start at 0.7 on mobile
+        // Discrete snap zoom levels for mobile (5 levels — 0.2 is max zoom-out)
+        const SNAP_ZOOM_LEVELS = [0.2, 0.35, 0.7, 1.4, 3.0];
+        let snapZoomIdx = isMobile ? 2 : -1; // Start at 0.7 on mobile (index 2)
         let pinchSnapped = false;
         let wasPinching = false;
         let lastPinchMidX = 0, lastPinchMidY = 0;
@@ -6142,7 +6143,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 // Continuous zoom toward live finger midpoint (mobile + desktop)
                 const liveX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 const liveY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                const newZoom = Math.max(0.2, Math.min(4, initialZoom * rawFactor));
+                const newZoom = Math.max(0.15, Math.min(4, initialZoom * rawFactor));
                 const canvasRect = canvas.getBoundingClientRect();
                 const logX = (liveX - canvasRect.left) / zoomLevel - panX;
                 const logY = (liveY - canvasRect.top) / zoomLevel - panY;
