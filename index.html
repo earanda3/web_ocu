@@ -1125,6 +1125,11 @@
 
             const touchMoveHandler = (e) => {
                 if (!pongActive || !pongCursorPaddle) return;
+                if (e.touches.length === 2) {
+                    // 2-finger pinch: resize paddle
+                    e.preventDefault();
+                    return;
+                }
                 e.preventDefault();
                 const touch = e.touches[0];
                 pongMouseX = touch.clientX;
@@ -1132,6 +1137,46 @@
                 pongCursorPaddle.style.left = pongMouseX + 'px';
                 pongCursorPaddle.style.top = pongMouseY + 'px';
             };
+
+            // Scroll wheel / trackpad pinch: resize paddle
+            const wheelHandler = (e) => {
+                if (!pongActive || !pongCursorPaddle) return;
+                e.preventDefault();
+                const current = parseFloat(pongCursorPaddle.style.width) || 50;
+                const delta = e.deltaY !== undefined ? -e.deltaY : (e.detail ? -e.detail * 3 : 0);
+                const next = Math.min(200, Math.max(16, current + delta * 0.3));
+                pongCursorPaddle.style.width  = next + 'px';
+                pongCursorPaddle.style.height = next + 'px';
+                pongPaddleRadius = next / 2;
+            };
+
+            // Touch pinch: resize paddle
+            let _pinchDist = 0, _pinchSize = 0;
+            const pinchStartHandler = (e) => {
+                if (!pongActive || e.touches.length !== 2) return;
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                _pinchDist = Math.hypot(dx, dy);
+                _pinchSize = parseFloat(pongCursorPaddle.style.width) || 50;
+            };
+            const pinchMoveHandler = (e) => {
+                if (!pongActive || e.touches.length !== 2) return;
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const dist = Math.hypot(dx, dy);
+                const next = Math.min(200, Math.max(16, Math.round(_pinchSize * dist / (_pinchDist || dist))));
+                pongCursorPaddle.style.width  = next + 'px';
+                pongCursorPaddle.style.height = next + 'px';
+                pongPaddleRadius = next / 2;
+            };
+            document.addEventListener('wheel', wheelHandler, { passive: false });
+            document.addEventListener('touchstart', pinchStartHandler, { passive: false });
+            document.addEventListener('touchmove', pinchMoveHandler, { passive: false });
+            pongCursorPaddle._wheelHandler = wheelHandler;
+            pongCursorPaddle._pinchStartHandler = pinchStartHandler;
+            pongCursorPaddle._pinchMoveHandler = pinchMoveHandler;
 
             const keyHandler = (e) => {
                 if (!pongActive) return;
@@ -1167,6 +1212,16 @@
             pongCursorPaddle._mouseMoveHandler = mouseMoveHandler;
             pongCursorPaddle._touchMoveHandler = touchMoveHandler;
             pongCursorPaddle._keyHandler = keyHandler;
+        }
+
+        function stopPongControls() {
+            if (!pongCursorPaddle) return;
+            const wh = pongCursorPaddle._wheelHandler;
+            const psh = pongCursorPaddle._pinchStartHandler;
+            const pmh = pongCursorPaddle._pinchMoveHandler;
+            if (wh)  document.removeEventListener('wheel', wh);
+            if (psh) document.removeEventListener('touchstart', psh);
+            if (pmh) document.removeEventListener('touchmove', pmh);
         }
 
         function pongGameLoop() {
@@ -1296,8 +1351,13 @@
                     try { spawnRandomNewtroImage(); } catch { }
                     return;
                 }
-                case 'tao': { // open PDF preview
-                    try { previewPDF(); } catch { }
+                case 'cw-zines': { // open zines PDF
+                    try {
+                        const manifest = window.CONTENT_MANIFEST || [];
+                        const entry = manifest.find(m => m.word === 'zines');
+                        const pdfs = entry ? (entry.files.pdf || []).map(f => entry.folder + '/' + f) : [];
+                        if (pdfs.length) previewPDF(pdfs[Math.floor(Math.random() * pdfs.length)], el);
+                    } catch { }
                     return;
                 }
                 case 'currency': { // show currency image/QR
@@ -1336,8 +1396,6 @@
                         try { saveColors(randomBgColor, randomElColor); } catch { }
                     } else if (wordText === 'newtro') {
                         try { spawnRandomNewtroImage(); } catch { }
-                    } else if (wordText === 'tao') {
-                        try { previewPDF(); } catch { }
                     } else if (wordText === 'serp') {
                         try { toggleSnake(); } catch { }
                     } else if (wordText === '*') {
@@ -4646,12 +4704,13 @@ startPongGame(x, y);
 
 // Global P key listener for toggling pong
 document.addEventListener('keydown', (e) => {
+const tag = document.activeElement ? document.activeElement.tagName : '';
+if (tag === 'INPUT' || tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
 if (e.key === 'p' || e.key === 'P') {
 e.preventDefault();
 if (pongActive) {
 stopPongGame();
 } else {
-// Start pong at center of viewport
 const centerX = window.innerWidth / 2;
 const centerY = window.innerHeight / 2;
 startPongGame(centerX, centerY);
@@ -5776,11 +5835,19 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 img.style.left = Math.round(left) + 'px';
                 img.style.top = Math.round(top) + 'px';
             }
-            // Ensure explicit width/height for stable resizing
+            // Set width; always use height:auto so browser preserves natural aspect ratio.
+            // Once loaded, fix height numerically so edge-drag-resize stays proportional.
             const w = img.clientWidth || img.width || 120;
-            const ratio = (img.naturalWidth && img.naturalHeight) ? (img.naturalHeight / img.naturalWidth) : 1;
             if (!img.style.width) img.style.width = w + 'px';
-            if (!img.style.height) img.style.height = Math.max(1, Math.round((parseFloat(img.style.width) || w) * ratio)) + 'px';
+            img.style.height = 'auto';
+            const _fixHeight = () => {
+                if (img.naturalWidth && img.naturalHeight) {
+                    const r = img.naturalHeight / img.naturalWidth;
+                    img.style.height = Math.max(1, Math.round(parseFloat(img.style.width) * r)) + 'px';
+                }
+            };
+            if (img.complete && img.naturalWidth) { _fixHeight(); }
+            else { img.addEventListener('load', _fixHeight, { once: true }); }
             // Interactions
             enableShiftWheelResize(img);
             enableEdgeDragResize(img);
@@ -6512,19 +6579,26 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             const pdfView = document.getElementById('pdf-js-view');
             const pdfContainer = document.getElementById('pdf-container');
 
-            // Position the preview near the anchor element (defaults to tao)
-            const anchor = anchorEl || tao;
-            const anchorRect = anchor.getBoundingClientRect();
-            const canvasRect = canvas.getBoundingClientRect();
+            // Position modal near anchor if available, else center of screen
+            if (window.innerWidth <= 768) {
+                modal.style.left = '';
+                modal.style.top = '';
+            } else {
+                const anchor = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl : null;
+                if (anchor) {
+                    const anchorRect = anchor.getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
+                    const left = Math.round((anchorRect.left - canvasRect.left) / zoomLevel - panX + 100);
+                    const top  = Math.round((anchorRect.top  - canvasRect.top)  / zoomLevel - panY + 50);
+                    modal.style.left = left + 'px';
+                    modal.style.top  = top  + 'px';
+                } else {
+                    modal.style.left = Math.round((window.innerWidth  - 480) / 2) + 'px';
+                    modal.style.top  = Math.round((window.innerHeight - 560) / 4) + 'px';
+                }
+            }
 
-            // Calculate position relative to canvas
-            const left = (anchorRect.left - canvasRect.left) / zoomLevel - panX + 100;
-            const top = (anchorRect.top - canvasRect.top) / zoomLevel - panY + 50;
-
-            modal.style.left = left + 'px';
-            modal.style.top = top + 'px';
-
-            // Clear previous render (if any) and reset container offsets that could push content off-screen
+            // Clear previous render
             if (pdfContainer) {
                 pdfContainer.style.position = '';
                 pdfContainer.style.left = '';
@@ -6536,12 +6610,8 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             const pdfUrl = filePath || 'content/zines/tao.pdf';
             initPdfJsViewer(pdfUrl);
 
-            // Ensure modal is visible (clear any inline display:none)
-            modal.style.display = 'block';
-            // Show the modal with animation
+            // Show the modal (.show = display:flex via CSS)
             modal.classList.add('show');
-
-            // Drag is handled by setupPdfModalDrag initialized once at load
         }
 
         // Function to close PDF preview
