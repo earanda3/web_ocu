@@ -68,25 +68,6 @@
             font-family: 'O-Regular', serif;
         }
 
-        #tao {
-            position: absolute;
-            font-size: 24px;
-            color: #333;
-            text-decoration: none;
-            cursor: move;
-            user-select: none;
-            transition: color 0.2s ease;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            letter-spacing: 2px;
-        }
-
-        @media (max-width: 768px) {
-            #tao {
-                font-size: 16px !important;
-            }
-        }
 
         /* Individual letter styles for slot machine effect */
         .letter {
@@ -498,8 +479,6 @@
         <div class="intro-text" id="intro-2" style="opacity: 0;"></div>
     </div>
     <div id="canvas">
-        <a id="tao" href="content/zines/tao.pdf" download="tao.pdf"
-            style="position: absolute; left: 400px; top: 200px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px; display: none;">tao</a>
         <div id="currency"
             style="position: absolute; left: 100px; top: 300px; font-size: 24px; color: #333; cursor: move; user-select: none;">
         </div>
@@ -522,8 +501,6 @@
         <!-- Interactive words: wired up at load time -->
         <a id="serp-word" href="#"
             style="position: absolute; left: 80px; top: 420px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px;">Serp</a>
-        <a id="soroboru-word" href="#"
-            style="position: absolute; left: 200px; top: 420px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px;">SoroBoru</a>
         <a id="afegir-word" href="#"
             style="position: absolute; left: 420px; top: 420px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px;">Afegir</a>
         <a id="arxius-word" href="#"
@@ -543,13 +520,12 @@
             <span class="pdf-close">&times;</span>
             <div id="pdf-container">
                 <!-- PDF.js render target -->
-                <div id="pdf-js-view"
-                    style="position: relative; width: 100%; height: calc(100% - 65px); overflow: auto; background: white;">
+                <div id="pdf-js-view">
                 </div>
                 <div class="pdf-controls">
-                    <button id="download-pdf" title="Download PDF">⬇</button>
+                    <button id="download-pdf" title="Download PDF">baixar</button>
                     <span class="pdf-page-info">Fanzine</span>
-                    <button id="open-external" title="Open in new tab">↗</button>
+                    <button id="open-external" title="Open in new tab">obrir</button>
                 </div>
             </div>
         </div>
@@ -755,7 +731,7 @@
                 // Ensure all interactive words are present
                 const ensureFunctions = [
                     'ensureStopWord', 'ensureResetWord',
-                    'ensureSerpWord', 'ensureSoroBoruWord',
+                    'ensureSerpWord',
                     'ensurePixelWord', 'ensureLaberintWord', 'ensurePongWord',
                     'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord'
                 ];
@@ -1687,7 +1663,7 @@
             // Allow new intervals to be created
             window.__slotFrozen = false;
             // Re-init known words
-            const ids = ['tao', 'color-word', 'newtro-word', 'randomizer', 'reset-word', 'stop-word', 'start-word', 'laberint-word'];
+            const ids = ['color-word', 'newtro-word', 'randomizer', 'reset-word', 'stop-word', 'start-word', 'laberint-word'];
             ids.forEach(id => {
                 const el = document.getElementById(id);
                 if (!el) return;
@@ -2561,7 +2537,7 @@
         // Helper: return only app words (no images/pdf), excluding some ids
         function getAllDraggableWords(options = {}) {
             const excludeIds = new Set(options.excludeIds || []);
-            const controlIds = ['tao', 'color-word', 'newtro-word', 'randomizer', 'reset-word', 'stop-word', 'start-word', 'unitat-word', 'laberint-word', 'currency'];
+            const controlIds = ['color-word', 'newtro-word', 'randomizer', 'reset-word', 'stop-word', 'start-word', 'unitat-word', 'laberint-word', 'currency'];
             const list = [];
             controlIds.forEach(id => { const el = document.getElementById(id); if (el && !excludeIds.has(id)) list.push(el); });
             document.querySelectorAll('#canvas .file-word').forEach(el => { if (!excludeIds.has(el.id)) list.push(el); });
@@ -3971,9 +3947,10 @@
             });
         }
 
-        // Initialize "tao" with the slot machine effect
-        createWordSlotMachine(tao, 'tao');
-        addWordDragEvents(tao);
+        if (tao) {
+            createWordSlotMachine(tao, 'tao');
+            addWordDragEvents(tao);
+        }
 
         // Initialize color word with slot machine effect and drag
         if (colorWord) {
@@ -4138,14 +4115,6 @@
             serpWordEl.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleSnake(); });
         }
 
-        // ── Setup: SoroBoru ────────────────────────────────────────────────────
-        const soroBoruEl = document.getElementById('soroboru-word');
-        if (soroBoruEl) {
-            createWordSlotMachine(soroBoruEl, 'SoroBoru');
-            addWordDragEvents(soroBoruEl);
-            soroBoruEl.addEventListener('click', (e) => { e.preventDefault(); toggleSnake2(); });
-            soroBoruEl.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleSnake2(); });
-        }
 
         // ── Setup: Afegir ──────────────────────────────────────────────────────
         const afegirEl = document.getElementById('afegir-word');
@@ -4488,26 +4457,6 @@ el.addEventListener('click', (e) => { e.preventDefault(); toggleSnake(); });
 el.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleSnake(); });
 }
 
-// SoroBoru: click toggles second snake (same as M key)
-function ensureSoroBoruWord() {
-let el = document.getElementById('soroboru-word');
-if (el) return;
-el = document.createElement('a');
-el.id = 'soroboru-word';
-el.href = '#';
-el.style.position = 'absolute';
-el.style.fontSize = '24px';
-el.style.letterSpacing = '2px';
-el.style.color = '#333';
-el.style.cursor = 'move';
-el.style.userSelect = 'none';
-canvas.appendChild(el);
-placeElementInSafeArea(el);
-createWordSlotMachine(el, 'SoroBoru');
-addWordDragEvents(el);
-el.addEventListener('click', (e) => { e.preventDefault(); toggleSnake2(); });
-el.addEventListener('contextmenu', (e) => { e.preventDefault(); toggleSnake2(); });
-}
 
 // Afegir: prompts the user for a word and spawns it on the canvas
 function ensureAfegirWord() {
@@ -6301,8 +6250,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             isPanningCanvas = false;
         });
 
-        // Handle mouse down for dragging with any click
-        tao.addEventListener('mousedown', (e) => {
+        if (tao) tao.addEventListener('mousedown', (e) => {
             e.preventDefault();
             isDragging = true;
             dragStarted = false;
@@ -6343,23 +6291,16 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             document.removeEventListener('mouseup', stopDrag);
         }
 
-        // Left click for preview, right click for download
-        tao.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            if (e.ctrlKey || e.metaKey) {
-                downloadPDF();
-            } else {
-                previewPDF();
-            }
-        });
-
-        // Left click for preview if not dragging
-        tao.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (!dragStarted) {
-                previewPDF();
-            }
-        });
+        if (tao) {
+            tao.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) { downloadPDF(); } else { previewPDF(); }
+            });
+            tao.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!dragStarted) previewPDF();
+            });
+        }
 
         // Initialize simple PDF viewer
         function initPdfViewer() {

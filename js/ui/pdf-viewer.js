@@ -251,12 +251,19 @@ function previewPDF(url = 'tao.pdf') {
     }
     pdfView.innerHTML = '';
 
+    // Mobile: let CSS media query control size and position
+    if (window.innerWidth <= 768) {
+        modal.style.left = '';
+        modal.style.top = '';
+        modal.style.width = '';
+        modal.style.height = '';
+        modal.style.transform = '';
+    }
+
     // Load and render with PDF.js
     initPdfJsViewer(url);
 
-    // Ensure modal is visible (clear any inline display:none)
-    modal.style.display = 'block';
-    // Show the modal with animation
+    // Show the modal (.show class sets display:flex via CSS)
     modal.classList.add('show');
 }
 
@@ -276,20 +283,18 @@ function closePdfPreview() {
         pdfCurrentPage = 1;
         pdfRendering = false;
         pdfPendingPage = null;
-        // Reset modal completely so it can be reopened
+        // Reset inline overrides so CSS controls size/position on reopen
         modal.style.left = '';
         modal.style.top = '';
         modal.style.width = '';
         modal.style.height = '';
-        modal.style.transform = ''; // Clear transform if set
-        // Clear any stray offsets on container
+        modal.style.transform = '';
+        modal.style.display = '';
         if (pdfContainer) {
             pdfContainer.style.position = '';
             pdfContainer.style.left = '';
             pdfContainer.style.top = '';
         }
-        // Let CSS control visibility (base: display:none; .show: display:block)
-        modal.style.display = '';
     }, 400);
 }
 
