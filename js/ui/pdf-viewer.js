@@ -327,12 +327,17 @@ function renderAllPages(container) {
 
     const availableWidth = container.clientWidth || 400;
 
+    const dpr = window.devicePixelRatio || 1;
+
     const renderPage = (num) => {
         if (num > pdfDoc.numPages) return;
         pdfDoc.getPage(num).then((page) => {
             const unscaledViewport = page.getViewport({ scale: 1 });
-            const scale = availableWidth / unscaledViewport.width;
-            const viewport = page.getViewport({ scale });
+            // Logical scale to fit container width
+            const logicalScale = availableWidth / unscaledViewport.width;
+            // Physical scale: multiply by DPR for HiDPI/Retina sharpness
+            const physicalScale = logicalScale * dpr;
+            const viewport = page.getViewport({ scale: physicalScale });
 
             // Wrapper per pàgina
             const pageWrapper = document.createElement('div');
@@ -345,8 +350,12 @@ function renderAllPages(container) {
             const canvas = document.createElement('canvas');
             canvas.style.display = 'block';
             canvas.style.background = 'white';
+            // Physical canvas dimensions (full DPR resolution)
             canvas.width = viewport.width;
             canvas.height = viewport.height;
+            // CSS dimensions stay at logical size so layout is unaffected
+            canvas.style.width  = (viewport.width  / dpr) + 'px';
+            canvas.style.height = (viewport.height / dpr) + 'px';
             pageWrapper.appendChild(canvas);
             container.appendChild(pageWrapper);
 
