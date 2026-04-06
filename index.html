@@ -6388,7 +6388,8 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             // Open in new tab button
             openExternalBtn.onclick = (e) => {
                 e.stopPropagation();
-                window.open('content/zines/tao.pdf', '_blank');
+                const url = (typeof currentPdfUrl !== 'undefined' && currentPdfUrl) ? currentPdfUrl : 'content/zines/tao.pdf';
+                window.open(url, '_blank');
             };
 
             // Keyboard controls
@@ -6663,11 +6664,11 @@ openStlViewer('content/ocu3D/TukTuk.stl');
         function initPdfJsViewer(url) {
             const container = document.getElementById('pdf-js-view');
             if (!container) return;
+            if (url) currentPdfUrl = url;
 
             pdfjsLib.getDocument(url).promise.then((doc) => {
                 pdfDoc = doc;
                 pdfCurrentPage = 1;
-                // Render all pages vertically
                 renderAllPages(container);
             }).catch((err) => {
                 console.error('PDF load error:', err);
@@ -6678,18 +6679,28 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             if (!pdfDoc) return;
             container.innerHTML = '';
 
-            const availableWidth = container.clientWidth || 400;
+            // Enable vertical scroll so all pages are accessible
+            container.style.overflowY = 'auto';
+            container.style.overflowX = 'hidden';
+            if (container.parentElement) {
+                container.parentElement.style.overflowY = 'auto';
+                container.parentElement.style.overflowX = 'hidden';
+            }
+
+            const availableWidth = Math.max(container.clientWidth || 0, 360);
+            const dpr = window.devicePixelRatio || 1;
+            const sharpDpr = Math.max(dpr, 2);
 
             const renderPage = (num) => {
                 if (num > pdfDoc.numPages) return;
                 pdfDoc.getPage(num).then((page) => {
                     const unscaledViewport = page.getViewport({ scale: 1 });
-                    const scale = availableWidth / unscaledViewport.width;
-                    const viewport = page.getViewport({ scale });
+                    const logicalScale = availableWidth / unscaledViewport.width;
+                    const physicalScale = logicalScale * sharpDpr;
+                    const viewport = page.getViewport({ scale: physicalScale });
 
-                    // Wrapper per pàgina
                     const pageWrapper = document.createElement('div');
-                    pageWrapper.style.padding = '12px 0';
+                    pageWrapper.style.padding = '8px 0';
                     pageWrapper.style.background = 'white';
                     pageWrapper.style.display = 'flex';
                     pageWrapper.style.justifyContent = 'center';
@@ -6700,11 +6711,12 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                     canvas.style.background = 'white';
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
+                    canvas.style.width  = (viewport.width  / sharpDpr) + 'px';
+                    canvas.style.height = (viewport.height / sharpDpr) + 'px';
                     pageWrapper.appendChild(canvas);
                     container.appendChild(pageWrapper);
 
                     const ctx = canvas.getContext('2d');
-                    // Fons blanc
                     ctx.save();
                     ctx.fillStyle = '#ffffff';
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -6722,9 +6734,10 @@ openStlViewer('content/ocu3D/TukTuk.stl');
 
         // Direct download function
         function downloadPDF() {
+            const target = (typeof currentPdfUrl !== 'undefined' && currentPdfUrl) ? currentPdfUrl : 'content/zines/tao.pdf';
             const a = document.createElement('a');
-            a.href = 'content/zines/tao.pdf';
-            a.download = 'tao.pdf';
+            a.href = target;
+            a.download = target.split('/').pop();
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

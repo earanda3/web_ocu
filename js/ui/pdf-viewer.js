@@ -28,7 +28,7 @@ function initPdfViewer() {
     if (openExternalBtn) {
         openExternalBtn.onclick = (e) => {
             e.stopPropagation();
-            window.open('tao.pdf', '_blank');
+            if (currentPdfUrl) window.open(currentPdfUrl, '_blank');
         };
     }
 
@@ -306,6 +306,7 @@ let pdfScale = 1;
 let pdfCurrentPage = 1;
 let pdfRendering = false;
 let pdfPendingPage = null;
+let currentPdfUrl = '';
 
 // Configure worker
 if (window.pdfjsLib) {
@@ -315,6 +316,7 @@ if (window.pdfjsLib) {
 function initPdfJsViewer(url) {
     const container = document.getElementById('pdf-js-view');
     if (!container) return;
+    currentPdfUrl = url || currentPdfUrl;
 
     pdfjsLib.getDocument(url).promise.then((doc) => {
         pdfDoc = doc;
@@ -330,23 +332,33 @@ function renderAllPages(container) {
     if (!pdfDoc) return;
     container.innerHTML = '';
 
-    const availableWidth = container.clientWidth || 400;
+    // Enable vertical scroll so all pages are reachable
+    container.style.overflowY = 'auto';
+    container.style.overflowX = 'hidden';
+    if (container.parentElement) {
+        container.parentElement.style.overflowY = 'auto';
+        container.parentElement.style.overflowX = 'hidden';
+    }
+
+    const availableWidth = Math.max(container.clientWidth || 0, 360);
 
     const dpr = window.devicePixelRatio || 1;
+    // Render at least 2× logical size for sharp text on non-retina screens
+    const sharpDpr = Math.max(dpr, 2);
 
     const renderPage = (num) => {
         if (num > pdfDoc.numPages) return;
         pdfDoc.getPage(num).then((page) => {
             const unscaledViewport = page.getViewport({ scale: 1 });
-            // Logical scale to fit container width
+            // Logical scale: fit container width
             const logicalScale = availableWidth / unscaledViewport.width;
-            // Physical scale: multiply by DPR for HiDPI/Retina sharpness
-            const physicalScale = logicalScale * dpr;
+            // Physical scale: multiply by sharpDpr for crisp rendering
+            const physicalScale = logicalScale * sharpDpr;
             const viewport = page.getViewport({ scale: physicalScale });
 
             // Wrapper per pàgina
             const pageWrapper = document.createElement('div');
-            pageWrapper.style.padding = '12px 0';
+            pageWrapper.style.padding = '8px 0';
             pageWrapper.style.background = 'white';
             pageWrapper.style.display = 'flex';
             pageWrapper.style.justifyContent = 'center';
@@ -355,12 +367,12 @@ function renderAllPages(container) {
             const canvas = document.createElement('canvas');
             canvas.style.display = 'block';
             canvas.style.background = 'white';
-            // Physical canvas dimensions (full DPR resolution)
+            // Physical canvas: full sharpDpr resolution
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            // CSS dimensions stay at logical size so layout is unaffected
-            canvas.style.width  = (viewport.width  / dpr) + 'px';
-            canvas.style.height = (viewport.height / dpr) + 'px';
+            // CSS: display at logical (container) size
+            canvas.style.width  = (viewport.width  / sharpDpr) + 'px';
+            canvas.style.height = (viewport.height / sharpDpr) + 'px';
             pageWrapper.appendChild(canvas);
             container.appendChild(pageWrapper);
 
@@ -382,10 +394,12 @@ function renderAllPages(container) {
 }
 
 // Direct download function
-function downloadPDF(url = 'tao.pdf') {
+function downloadPDF(url) {
+    const target = url || currentPdfUrl;
+    if (!target) return;
     const a = document.createElement('a');
-    a.href = url;
-    a.download = url.split('/').pop();
+    a.href = target;
+    a.download = target.split('/').pop();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
