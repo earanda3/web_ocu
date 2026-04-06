@@ -1407,133 +1407,90 @@
         }
 
         function checkPongCollisions(ballX, ballY) {
+            // Same coordinate system as snake: (rect.left - canvasRect.left) / zl
+            // With transform-origin:0 0, canvasRect.left already includes pan*zl,
+            // so the formula returns the element's CSS left directly — no panX subtraction.
+            const canvasRect = canvas.getBoundingClientRect();
+            const zl = zoomLevel;
+
+            const _toCanvasX = r => (r.left - canvasRect.left) / zl;
+            const _toCanvasY = r => (r.top  - canvasRect.top)  / zl;
+            const _hit = (r) => {
+                const ex = _toCanvasX(r), ey = _toCanvasY(r);
+                const ew = r.width / zl, eh = r.height / zl;
+                return ballX + 8 >= ex && ballX <= ex + ew && ballY + 8 >= ey && ballY <= ey + eh;
+            };
+
             // Check collisions with all draggable words
             const words = canvas.querySelectorAll('#canvas a, #currency');
             words.forEach(word => {
-                // Skip pong entities
                 if (word.classList && (word.classList.contains('pong-ball') || word.classList.contains('pong-cursor-paddle'))) return;
                 const rect = word.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
-                const wordX = (rect.left - canvasRect.left) / zoomLevel - panX;
-                const wordY = (rect.top - canvasRect.top) / zoomLevel - panY;
-                const wordW = rect.width / zoomLevel;
-                const wordH = rect.height / zoomLevel;
+                if (!_hit(rect)) return;
 
-                if (ballX + 8 >= wordX && ballX <= wordX + wordW &&
-                    ballY + 8 >= wordY && ballY <= wordY + wordH) {
-
-                    const wordText = word.textContent.toLowerCase().trim();
-
-                    // Activate this word's behavior (except lletres/text)
-                    const wordId = word.id || '';
-                    if (wordId !== 'lletres-word') {
-                        try { activateWordElement(word, wordText); } catch { }
-                    }
-
-                    const centerX = wordX + wordW / 2;
-                    const centerY = wordY + wordH / 2;
-
-                    if (Math.abs(ballX - centerX) > Math.abs(ballY - centerY)) {
-                        pongVelocity.x = -pongVelocity.x;
-                    } else {
-                        pongVelocity.y = -pongVelocity.y;
-                    }
-
-                    acceleratePong();
+                const wordText = word.textContent.toLowerCase().trim();
+                const wordId = word.id || '';
+                if (wordId !== 'lletres-word') {
+                    try { activateWordElement(word, wordText); } catch { }
                 }
+
+                const centerX = _toCanvasX(rect) + rect.width / zl / 2;
+                const centerY = _toCanvasY(rect) + rect.height / zl / 2;
+                if (Math.abs(ballX - centerX) > Math.abs(ballY - centerY)) {
+                    pongVelocity.x = -pongVelocity.x;
+                } else {
+                    pongVelocity.y = -pongVelocity.y;
+                }
+                acceleratePong();
             });
 
             // Check collisions with images - EAT THEM!
-            const images = canvas.querySelectorAll('img');
-            images.forEach(img => {
+            canvas.querySelectorAll('img').forEach(img => {
                 const rect = img.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
-                const imgX = (rect.left - canvasRect.left) / zoomLevel - panX;
-                const imgY = (rect.top - canvasRect.top) / zoomLevel - panY;
-                const imgW = rect.width / zoomLevel;
-                const imgH = rect.height / zoomLevel;
-
-                if (ballX + 8 >= imgX && ballX <= imgX + imgW &&
-                    ballY + 8 >= imgY && ballY <= imgY + imgH) {
-
-                    // EAT the image (remove it)
-                    img.remove();
-
-                    // Accelerate ball speed when eating images
-                    pongSpeed += 0.3; // Increase speed
-                    pongVelocity.x = pongVelocity.x > 0 ? pongSpeed : -pongSpeed;
-                    pongVelocity.y = pongVelocity.y > 0 ? pongSpeed : -pongSpeed;
-
-                    // Update pong touches counter for eating images
-                    pongTouches++;
-                    updatePongHud();
-                }
+                if (!_hit(rect)) return;
+                img.remove();
+                pongSpeed = Math.min(4, pongSpeed + 0.3);
+                pongVelocity.x = pongVelocity.x > 0 ? pongSpeed : -pongSpeed;
+                pongVelocity.y = pongVelocity.y > 0 ? pongSpeed : -pongSpeed;
+                pongTouches++;
+                updatePongHud();
             });
 
             // Check collisions with color wheels - EAT THEM!
             canvas.querySelectorAll('.color-wheel-wrapper').forEach(cw => {
                 const rect = cw.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
-                const cwX = (rect.left - canvasRect.left) / zoomLevel - panX;
-                const cwY = (rect.top  - canvasRect.top)  / zoomLevel - panY;
-                const cwW = rect.width  / zoomLevel;
-                const cwH = rect.height / zoomLevel;
-                if (ballX + 8 >= cwX && ballX <= cwX + cwW && ballY + 8 >= cwY && ballY <= cwY + cwH) {
-                    try { cw.remove(); } catch { }
-                    pongSpeed = Math.min(4, pongSpeed + 0.3);
-                    pongTouches++;
-                    updatePongHud();
-                }
+                if (!_hit(rect)) return;
+                try { cw.remove(); } catch { }
+                pongSpeed = Math.min(4, pongSpeed + 0.3);
+                pongTouches++;
+                updatePongHud();
             });
 
             // Check collisions with STL viewers - EAT THEM!
-            const stlViewers = canvas.querySelectorAll('.stl-viewer-container');
-            stlViewers.forEach(stlViewer => {
+            canvas.querySelectorAll('.stl-viewer-container').forEach(stlViewer => {
                 const rect = stlViewer.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
-                const stlX = (rect.left - canvasRect.left) / zoomLevel - panX;
-                const stlY = (rect.top - canvasRect.top) / zoomLevel - panY;
-                const stlW = rect.width / zoomLevel;
-                const stlH = rect.height / zoomLevel;
-
-                if (ballX + 8 >= stlX && ballX <= stlX + stlW &&
-                    ballY + 8 >= stlY && ballY <= stlY + stlH) {
-
-                    // EAT the STL viewer (remove it)
-                    if (typeof closeStlViewer === 'function') {
-                        closeStlViewer(stlViewer);
-                    } else {
-                        stlViewer.remove();
-                    }
-
-                    // Accelerate ball speed when eating STL viewers
-                    pongSpeed += 0.3; // Increase speed
-                    pongVelocity.x = pongVelocity.x > 0 ? pongSpeed : -pongSpeed;
-                    pongVelocity.y = pongVelocity.y > 0 ? pongSpeed : -pongSpeed;
-
-                    // Update pong touches counter for eating STL viewers
-                    pongTouches++;
-                    updatePongHud();
+                if (!_hit(rect)) return;
+                if (typeof closeStlViewer === 'function') {
+                    closeStlViewer(stlViewer);
+                } else {
+                    stlViewer.remove();
                 }
+                pongSpeed = Math.min(4, pongSpeed + 0.3);
+                pongVelocity.x = pongVelocity.x > 0 ? pongSpeed : -pongSpeed;
+                pongVelocity.y = pongVelocity.y > 0 ? pongSpeed : -pongSpeed;
+                pongTouches++;
+                updatePongHud();
             });
 
             // Check collisions with PDF viewers - EAT THEM!
-            const pdfViewers = document.querySelectorAll('.pdf-modal, .pdf-container, iframe[src*=".pdf"]');
-            pdfViewers.forEach(pdfViewer => {
-                if (pdfViewer.style.display !== 'none') {
+            // PDF modal is position:absolute in body (not in canvas), but _hit() works
+            // for any element since canvasRect is the reference and ball viewport = canvasRect.left + ballX*zl
+            document.querySelectorAll('#pdf-modal.show').forEach(pdfViewer => {
                     const rect = pdfViewer.getBoundingClientRect();
-                    const canvasRect = canvas.getBoundingClientRect();
-                    const pdfX = (rect.left - canvasRect.left) / zoomLevel - panX;
-                    const pdfY = (rect.top - canvasRect.top) / zoomLevel - panY;
-                    const pdfW = rect.width / zoomLevel;
-                    const pdfH = rect.height / zoomLevel;
-
-                    if (ballX + 8 >= pdfX && ballX <= pdfX + pdfW &&
-                        ballY + 8 >= pdfY && ballY <= pdfY + pdfH) {
+                    if (!_hit(rect)) return;
 
                         // EAT the PDF viewer (hide/remove it)
-                        pdfViewer.style.display = 'none';
-                        if (pdfViewer.remove) pdfViewer.remove();
+                        try { if (typeof closePdfPreview === 'function') closePdfPreview(); else pdfViewer.classList.remove('show'); } catch { }
 
                         // Accelerate ball speed when eating PDFs
                         pongSpeed += 0.4; // More speed boost for PDFs
@@ -1543,8 +1500,6 @@
                         // Update pong touches counter for eating PDFs
                         pongTouches++;
                         updatePongHud();
-                    }
-                }
             });
 
             // Check collisions with snake segments
@@ -4160,15 +4115,18 @@
         if (cwZinesEl) {
             createWordSlotMachine(cwZinesEl, 'zines');
             addWordDragEvents(cwZinesEl);
-            cwZinesEl.addEventListener('click', (e) => {
+            const _openZinesPDF = (e) => {
                 e.preventDefault();
                 const manifest = window.CONTENT_MANIFEST || [];
                 const entry = manifest.find(m => m.word === 'zines');
                 const pdfFiles = entry ? (entry.files.pdf || []).map(f => entry.folder + '/' + f) : [];
-                if (pdfFiles.length && typeof previewPDF === 'function') {
-                    previewPDF(pdfFiles[Math.floor(Math.random() * pdfFiles.length)], cwZinesEl);
-                }
-            });
+                const fileToOpen = pdfFiles.length
+                    ? pdfFiles[Math.floor(Math.random() * pdfFiles.length)]
+                    : 'content/zines/tao.pdf';
+                if (typeof previewPDF === 'function') previewPDF(fileToOpen, cwZinesEl);
+            };
+            cwZinesEl.addEventListener('click', _openZinesPDF);
+            cwZinesEl.addEventListener('contextmenu', _openZinesPDF);
         }
 
         // ── Setup: ocu (images) ────────────────────────────────────────────────
@@ -5902,7 +5860,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                     const minW = 120, maxW = 480;
                     const rw = Math.floor(minW + Math.random() * (maxW - minW));
                     img.style.width = rw + 'px';
-                    img.style.height = Math.max(1, Math.round(rw * ratio)) + 'px';
+                    img.style.height = 'auto'; // _fixHeight will correct it once loaded
                     placeElementInSafeArea(img);
                     img.dataset.userMoved = '1';
                 } catch { }
@@ -6626,11 +6584,14 @@ openStlViewer('content/ocu3D/TukTuk.stl');
                 const anchor = (anchorEl && anchorEl.getBoundingClientRect) ? anchorEl : null;
                 if (anchor) {
                     const anchorRect = anchor.getBoundingClientRect();
-                    const canvasRect = canvas.getBoundingClientRect();
-                    const left = Math.round((anchorRect.left - canvasRect.left) / zoomLevel - panX + 100);
-                    const top  = Math.round((anchorRect.top  - canvasRect.top)  / zoomLevel - panY + 50);
-                    modal.style.left = left + 'px';
-                    modal.style.top  = top  + 'px';
+                    // Modal is position:absolute in body; use viewport coords (scrollX=0 in this SPA)
+                    const rawLeft = anchorRect.left + 40;
+                    const rawTop  = anchorRect.top  + 20;
+                    // Keep inside viewport
+                    const safeLeft = Math.min(rawLeft, window.innerWidth  - 490);
+                    const safeTop  = Math.min(rawTop,  window.innerHeight - 580);
+                    modal.style.left = Math.max(0, safeLeft) + 'px';
+                    modal.style.top  = Math.max(0, safeTop)  + 'px';
                 } else {
                     modal.style.left = Math.round((window.innerWidth  - 480) / 2) + 'px';
                     modal.style.top  = Math.round((window.innerHeight - 560) / 4) + 'px';
