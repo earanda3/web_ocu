@@ -864,6 +864,7 @@
         let pongBall = null;
         let pongVelocity = { x: 1.5, y: 1.5 };
         let pongSpeed = 1.5;
+        let pongPaddleRadius = 25;
         let pongTouches = 0;
         let pongAnimationFrame = null;
         let pongMouseX = 0;
@@ -1263,7 +1264,7 @@
             const paddleCenterY = ((paddleRect.top + paddleRect.height / 2) - canvasRect.top) / zoomLevel;
 
             // ZOOM FIX: Paddle is position:fixed (doesn't scale), so in canvas units its radius is smaller when zoomed out
-            const paddleRadius = 25 / zoomLevel; // Scale radius by zoom level
+            const paddleRadius = pongPaddleRadius / zoomLevel; // Scale radius by zoom level
             const paddleThickness = 2 / zoomLevel; // Also scale thickness
 
             // Ball center
@@ -1469,6 +1470,22 @@
                 }
             });
 
+            // Check collisions with color wheels - EAT THEM!
+            canvas.querySelectorAll('.color-wheel-wrapper').forEach(cw => {
+                const rect = cw.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                const cwX = (rect.left - canvasRect.left) / zoomLevel - panX;
+                const cwY = (rect.top  - canvasRect.top)  / zoomLevel - panY;
+                const cwW = rect.width  / zoomLevel;
+                const cwH = rect.height / zoomLevel;
+                if (ballX + 8 >= cwX && ballX <= cwX + cwW && ballY + 8 >= cwY && ballY <= cwY + cwH) {
+                    try { cw.remove(); } catch { }
+                    pongSpeed = Math.min(4, pongSpeed + 0.3);
+                    pongTouches++;
+                    updatePongHud();
+                }
+            });
+
             // Check collisions with STL viewers - EAT THEM!
             const stlViewers = canvas.querySelectorAll('.stl-viewer-container');
             stlViewers.forEach(stlViewer => {
@@ -1611,9 +1628,19 @@
                 if (pongCursorPaddle._keyHandler) {
                     document.removeEventListener('keydown', pongCursorPaddle._keyHandler);
                 }
+                if (pongCursorPaddle._wheelHandler) {
+                    document.removeEventListener('wheel', pongCursorPaddle._wheelHandler);
+                }
+                if (pongCursorPaddle._pinchStartHandler) {
+                    document.removeEventListener('touchstart', pongCursorPaddle._pinchStartHandler);
+                }
+                if (pongCursorPaddle._pinchMoveHandler) {
+                    document.removeEventListener('touchmove', pongCursorPaddle._pinchMoveHandler);
+                }
                 try { pongCursorPaddle.remove(); } catch { }
                 pongCursorPaddle = null;
             }
+            pongPaddleRadius = 25;
 
             // Clear any debug overlay
             clearPongDebug();
@@ -3079,7 +3106,7 @@
             const clientY = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
             const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
             let target = null;
-            const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
+            const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .color-wheel-wrapper, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
             for (let i = candidates.length - 1; i >= 0; i--) {
                 const el = candidates[i];
                 if (!el) continue;
@@ -3147,6 +3174,12 @@
                     }
                 } catch { }
                 return true; // ate STL viewer -> grow
+            }
+
+            // If snake hits a color wheel: remove it
+            if (target.classList && target.classList.contains('color-wheel-wrapper')) {
+                try { target.remove(); } catch { }
+                return true; // ate color wheel -> grow
             }
 
             // If snake hits the word "color": randomize app colors (only snake does this)
@@ -3407,7 +3440,7 @@
             const clientY = cRect.top  + (y + SNAKE_SIZE / 2) * zl;
             const headR = x + SNAKE_SIZE, headB = y + SNAKE_SIZE;
             let target = null;
-            const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
+            const candidates = canvas.querySelectorAll('a, img, .stl-viewer-container, .color-wheel-wrapper, .maze-container, .pixel-goal, .hazard-pixel, .loose-pixel');
             for (let i = candidates.length - 1; i >= 0; i--) {
                 const el = candidates[i];
                 if (!el) continue;
@@ -3477,13 +3510,19 @@
                 return true; // ate STL viewer -> grow
             }
 
+            // If snake hits a color wheel: remove it
+            if (target.classList && target.classList.contains('color-wheel-wrapper')) {
+                try { target.remove(); } catch { }
+                return true; // ate color wheel -> grow
+            }
+
             // If snake hits the word "color": randomize app colors (only snake does this)
             if ((target.id && target.id === 'color-word') || (target.textContent && target.textContent.trim().toLowerCase() === 'color')) {
                 try {
                     const rnd = () => '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
                     const bg = rnd();
                     const el = rnd();
-                    applyColors(bg, el);
+                    if (typeof applyColors === 'function') applyColors(bg, el);
                     if (typeof saveColors === 'function') saveColors(bg, el);
                 } catch { }
                 return false;
