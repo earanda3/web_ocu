@@ -1386,6 +1386,14 @@
                     try { clearAllSlotIntervals(); } catch { }
                     return;
                 }
+                case 'cw-ocu': { // spawn ocu image
+                    try { el.dispatchEvent(new MouseEvent('click', { bubbles: false })); } catch { }
+                    return;
+                }
+                case 'cw-ocu3d': { // open STL viewer
+                    try { el.dispatchEvent(new MouseEvent('click', { bubbles: false })); } catch { }
+                    return;
+                }
                 default: {
                     // Fallback by textual content for robustness
                     if (wordText === 'color') {
@@ -1401,6 +1409,9 @@
                         try { toggleSnake(); } catch { }
                     } else if (wordText === '*') {
                         try { arrangeWordsAlphabetically(); } catch { }
+                    } else {
+                        // General fallback: activate any word that has a registered click handler
+                        try { el.dispatchEvent(new MouseEvent('click', { bubbles: false })); } catch { }
                     }
                 }
             }
@@ -4927,6 +4938,8 @@ openStlViewer('content/ocu3D/TukTuk.stl');
 
         // Global P key listener for toggling pong
         document.addEventListener('keydown', (e) => {
+            const _tag = document.activeElement ? document.activeElement.tagName : '';
+            if (_tag === 'INPUT' || _tag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
             if (e.key === 'p' || e.key === 'P') {
                 e.preventDefault();
                 if (pongActive) {
