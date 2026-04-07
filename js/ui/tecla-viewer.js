@@ -757,12 +757,14 @@ _active_mode.update(
             const btn = document.createElement('div');
             btn.className = 'tv-btn';
             btn.dataset.idx = i;
-            // Button 13 (index 12): layer toggle
             if (i === 12) {
-                btn.textContent = '\u21C5';
-                btn.title = 'Canviar capa';
-                btn.classList.add('layer-key');
-                btn.style.opacity = '0.85';
+                btn.textContent = '\u21C5'; btn.title = 'Canviar capa'; btn.classList.add('layer-key'); btn.style.opacity = '0.85';
+            } else if (i === 13) {
+                btn.textContent = '\u25bc'; btn.title = 'Octava -'; btn.style.opacity = '0.7';
+            } else if (i === 14) {
+                btn.textContent = '\u25b2'; btn.title = 'Octava +'; btn.style.opacity = '0.7';
+            } else if (i === 15) {
+                btn.textContent = '\u25a0'; btn.title = 'Parar so'; btn.style.opacity = '0.8';
             } else {
                 btn.textContent = i + 1;
             }
@@ -771,45 +773,77 @@ _active_mode.update(
             const press = () => {
                 if (!sim || !sim.isReady) return;
 
-                // ── Button 13: toggle layer ──
-                if (i === 12) {
-                    _layer = 1 - _layer;
-                    if (_layer === 0) _assignPending = null;
-                    _updateLayerUI();
-                    btn.classList.add('pressed');
-                    setTimeout(() => btn.classList.remove('pressed'), 120);
+                // ── Button 16 (index 15): all notes off ──
+                if (i === 15) {
+                    webMidi.allNotesOff();
+                    if (sim.isRunning) { sim.stopLoop(); updateCtrlState(); }
+                    addLog('\u25a0 All Notes Off', 'info');
+                    btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120);
                     return;
                 }
 
-                // ── Layer 1: mode assignment / activation ──
-                if (_layer === 1 && i < 12) {
+                // ── Button 13 (index 12): layer toggle ──
+                if (i === 12) {
+                    if (_layer === 0) {
+                        _layer = 1; _assignPending = null;
+                        if (sim.isRunning) { sim.stopLoop(); updateCtrlState(); }
+                        webMidi.allNotesOff();
+                        _updateLayerUI();
+                        addLog('\u21C5 Capa modes', 'info');
+                    } else {
+                        _layer = 0; _assignPending = null;
+                        _updateLayerUI();
+                        addLog('\u21C5 Mode teclat', 'info');
+                        loadModeByFile('mode_keyboard.py', null).then(() => _updateLayerUI()).catch(() => {});
+                    }
+                    btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120);
+                    return;
+                }
+
+                // ── Layer 0: keyboard ──
+                if (_layer === 0) {
+                    if (i === 13) {
+                        try { sim.pyodide.runPython(
+                            "if '_active_mode' in globals() and hasattr(_active_mode,'octave'):\n" +
+                            "    _active_mode.octave = max(0, _active_mode.octave - 1)\n" +
+                            "    print(f'Octava: {_active_mode.octave}')"
+                        ); } catch { }
+                        btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120);
+                        return;
+                    }
+                    if (i === 14) {
+                        try { sim.pyodide.runPython(
+                            "if '_active_mode' in globals() and hasattr(_active_mode,'octave'):\n" +
+                            "    _active_mode.octave = min(8, _active_mode.octave + 1)\n" +
+                            "    print(f'Octava: {_active_mode.octave}')"
+                        ); } catch { }
+                        btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120);
+                        return;
+                    }
+                    sim.pressButton(i);
+                    btn.classList.add('pressed');
+                    return;
+                }
+
+                // ── Layer 1: modes layer ──
+                if (i < 12) {
                     if (_assignPending) {
                         _btnModes[i] = { ..._assignPending };
                         _assignPending = null;
                         addLog(`"${_btnModes[i].name}" \u2192 tecla ${i + 1}`, 'ok');
                         _updateLayerUI();
                     } else if (_btnModes[i]) {
-                        const m = _btnModes[i];
-                        _layer = 0;
-                        _assignPending = null;
-                        _updateLayerUI();
-                        loadModeByFile(m.file, activeModeBtn);
+                        loadModeByFile(_btnModes[i].file, null);
+                        addLog(`\u25b6 ${_btnModes[i].name} (T${i + 1})`, 'ok');
                     } else {
                         addLog(`Tecla ${i + 1}: sense mode assignat`, 'warn');
                     }
-                    btn.classList.add('pressed');
-                    setTimeout(() => btn.classList.remove('pressed'), 120);
-                    return;
                 }
-
-                // ── Layer 0: normal keyboard ──
-                sim.pressButton(i);
-                btn.classList.add('pressed');
+                btn.classList.add('pressed'); setTimeout(() => btn.classList.remove('pressed'), 120);
             };
             const release = () => {
-                if (!sim || _layer === 1) return;
-                sim.releaseButton(i);
                 btn.classList.remove('pressed');
+                if (_layer === 0 && i < 12 && sim) sim.releaseButton(i);
             };
 
             btn.addEventListener('mousedown',  press);
@@ -995,37 +1029,40 @@ _active_mode.update(
     function _updateLayerUI() {
         const isL1 = _layer === 1;
         _gridBtns.forEach((b, i) => {
+            // Button 13 (\u21C5): layer toggle
             if (i === 12) {
-                b.textContent = '\u21C5';
-                b.title = isL1 ? 'Tornar a mode teclat' : 'Canviar a capa modes';
-                b.classList.toggle('layer-key', true);
+                b.textContent = isL1 ? '\u2190 Tec' : '\u21C5';
+                b.title       = isL1 ? 'Tornar a mode teclat' : 'Canviar a capa modes';
+                b.classList.add('layer-key');
                 b.style.background = isL1 ? 'var(--tv-el,#222)' : '';
                 b.style.color      = isL1 ? 'var(--tv-bg,#fff)' : '';
                 b.style.opacity    = '1';
+                b.style.fontWeight = ''; b.style.fontSize = '';
                 return;
             }
-            if (i >= 13) return;
+            // Buttons 14, 15, 16: fixed functional labels
+            if (i === 13) { b.textContent = '\u25bc'; b.title = 'Octava -'; b.style.opacity = '0.7'; b.style.fontWeight = ''; b.style.fontSize = ''; b.style.background = ''; b.style.color = ''; return; }
+            if (i === 14) { b.textContent = '\u25b2'; b.title = 'Octava +'; b.style.opacity = '0.7'; b.style.fontWeight = ''; b.style.fontSize = ''; b.style.background = ''; b.style.color = ''; return; }
+            if (i === 15) { b.textContent = '\u25a0'; b.title = 'Parar so'; b.style.opacity = '0.8'; b.style.fontWeight = ''; b.style.fontSize = ''; b.style.background = ''; b.style.color = ''; return; }
+            // Buttons 1-12: layer-dependent
             if (isL1) {
                 const m = _btnModes[i];
                 const hasPending = !!_assignPending;
+                b.style.background = ''; b.style.color = '';
                 b.style.fontWeight = m ? '700' : '';
                 b.style.fontSize   = m ? '9px' : '';
                 b.style.opacity    = m ? '0.95' : (hasPending ? '0.5' : '0.3');
-                b.textContent      = m ? m.name.replace('mode_','').replace('.py','').substring(0,6) : (i + 1);
-                b.title            = m ? m.name + '\nPrem per activar' : (hasPending ? 'Prem per assignar' : 'Sense mode');
+                b.textContent      = m ? m.name.replace(/^mode_/i,'').replace('.py','').substring(0,6) : (i + 1);
+                b.title            = m ? `${m.name}\nPrem per activar` : (hasPending ? 'Prem per assignar' : 'Sense mode');
             } else {
-                b.style.background = '';
-                b.style.color      = '';
-                b.style.opacity    = '';
-                b.style.fontWeight = '';
-                b.style.fontSize   = '';
-                b.textContent      = i + 1;
-                b.title            = '';
+                b.style.background = ''; b.style.color = '';
+                b.style.opacity = ''; b.style.fontWeight = ''; b.style.fontSize = '';
+                b.textContent = i + 1; b.title = '';
             }
         });
         if (isL1) {
             setStatus(_assignPending
-                ? `\u2192 Assigna "${_assignPending.name}" \u2014 prem una tecla (1-12)`
+                ? `\u2192 Assigna "${_assignPending.name}" \u2014 prem una tecla (1\u201112)`
                 : 'Capa modes \u21C5 \u2014 selecciona mode + prem tecla per assignar');
         } else {
             setStatus(sim?._modeName ? `Mode actiu: ${sim._modeName}` : 'Selecciona un mode');
