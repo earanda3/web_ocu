@@ -15,8 +15,8 @@
     z-index: 620;
     width: 680px;
     min-width: 380px;
-    height: 460px;
-    min-height: 300px;
+    height: 530px;
+    min-height: 340px;
     display: none;
     flex-direction: column;
     background: var(--tv-bg, #ffffff);
@@ -161,9 +161,10 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 5px;
     flex-shrink: 0;
+    max-width: 270px;
 }
 .tv-btn {
-    height: 38px;
+    aspect-ratio: 1;
     border: 1.5px solid var(--tv-el, #222);
     border-radius: 6px;
     background: transparent;
@@ -412,6 +413,12 @@
             const baseCode = await fetch('py/base_mode.py').then(r => r.text());
             this.pyodide.FS.writeFile('/tecla/modes/base_mode.py', baseCode);
 
+            // Load music_constants so mode_keyboard can import it
+            try {
+                const mcCode = await fetch('py/music_constants.py').then(r => r.text());
+                this.pyodide.FS.writeFile('/tecla/music_constants.py', mcCode);
+            } catch { }
+
             this.state = this.pyodide.globals.get('_state');
             this.isReady = true;
             onProgress?.('Pyodide llest ✓');
@@ -441,15 +448,54 @@ importlib.reload(_mode_mod)
 from adafruit_midi import MIDI
 import usb_midi
 from modes.base_mode import BaseMode
+
+# Primary: find BaseMode subclass
 _mode_class = None
 for _v in vars(_mode_mod).values():
     if isinstance(_v, type) and _v is not BaseMode and issubclass(_v, BaseMode):
         _mode_class = _v
         break
+
+# Fallback: any class with setup() + update() (e.g. KeyboardMode)
 if _mode_class is None:
-    raise ValueError("Cap classe BaseMode trobada")
+    for _v in vars(_mode_mod).values():
+        if (isinstance(_v, type)
+                and callable(getattr(_v, 'setup', None))
+                and callable(getattr(_v, 'update', None))
+                and _v.__module__ == _mode_mod.__name__):
+            _mode_class = _v
+            break
+
+if _mode_class is None:
+    raise ValueError("Cap classe mode trobada")
+
 _midi_inst = MIDI(midi_out=usb_midi.ports[1])
-_active_mode = _mode_class(_midi_inst)
+
+# Detect if constructor wants config_manager (e.g. KeyboardMode)
+import inspect as _inspect
+_params = list(_inspect.signature(_mode_class.__init__).parameters.keys())
+if 'config_manager' in _params:
+    class _MockCfgMgr:
+        def get_keyboard_scales(self):
+            try:
+                import music_constants as _mc
+                return list(range(len(_mc.SCALES)))
+            except Exception:
+                return list(range(24))
+        def get_arpeggiator_modes(self):
+            try:
+                import music_constants as _mc
+                return list(_mc.ARP_DIRS)
+            except Exception:
+                return ['up','down','pingpong','random']
+        def get_potentiometer_functions(self):
+            return {'pot_x':'Velocity/Arp Speed (dual)','pot_y':'Modulation (CC1)','pot_z':'Sustain (CC64)'}
+        def get_arp_potentiometer_functions(self):
+            return {'arp_pot_x':'Arp Speed (BPM)','arp_pot_y':'Arp Pattern Selector','arp_pot_z':'Gate Length'}
+    _active_mode = _mode_class(_midi_inst, config_manager=_MockCfgMgr())
+else:
+    _active_mode = _mode_class(_midi_inst)
+
 _active_mode.setup()
 _active_mode.__class__.__name__
 `);
@@ -875,10 +921,10 @@ _active_mode.update(
         if (anchorEl && anchorEl.getBoundingClientRect) {
             const r = anchorEl.getBoundingClientRect();
             modal.style.left = Math.max(0, Math.min(r.left + 40, window.innerWidth  - 700)) + 'px';
-            modal.style.top  = Math.max(0, Math.min(r.top  + 20, window.innerHeight - 480)) + 'px';
+            modal.style.top  = Math.max(0, Math.min(r.top  + 20, window.innerHeight - 550)) + 'px';
         } else {
             modal.style.left = Math.max(0, Math.round((window.innerWidth  - 680) / 2)) + 'px';
-            modal.style.top  = Math.max(0, Math.round((window.innerHeight - 460) / 4)) + 'px';
+            modal.style.top  = Math.max(0, Math.round((window.innerHeight - 530) / 4)) + 'px';
         }
         modal.classList.add('show');
     }
