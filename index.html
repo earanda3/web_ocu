@@ -509,6 +509,8 @@
             style="position: absolute; left: 700px; top: 420px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px;">TECLA</a>
         <a id="ordre-word" href="#"
             style="position: absolute; left: 80px; top: 490px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px;">Ordre</a>
+        <a id="info-word" href="#"
+            style="position: absolute; left: 220px; top: 490px; font-size: 24px; color: #333; cursor: move; user-select: none; letter-spacing: 2px;">Info</a>
     </div>
 
     <!-- PDF Preview Modal -->
@@ -642,6 +644,7 @@
             clearIntroIntervals();
             clearMainIntervals();
         }
+        window.clearAllSlotIntervals = clearAllSlotIntervals;
 
         // Spawn a draggable intro word within a central safe area of the viewport
         function spawnIntroWord(text, fontList) {
@@ -1394,6 +1397,10 @@
                     try { el.dispatchEvent(new MouseEvent('click', { bubbles: false })); } catch { }
                     return;
                 }
+                case 'info-word': { // open info viewer
+                    try { if (typeof openInfoViewer === 'function') openInfoViewer(el); } catch { }
+                    return;
+                }
                 default: {
                     // Fallback by textual content for robustness
                     if (wordText === 'color') {
@@ -1734,6 +1741,7 @@
             // Re-init currency animation if present
             try { createCurrencySlotMachine(); } catch { }
         }
+        window.resumeAllSlotMachines = resumeAllSlotMachines;
 
         // Slot machine effect but with a fixed font class (no font swapping)
         function createWordSlotMachineFixedFont(element, text, fontClass = 'font-oregular') {
@@ -4296,6 +4304,19 @@
             ordreEl.addEventListener('contextmenu', (e) => { e.preventDefault(); ordreEl.dispatchEvent(new MouseEvent('click')); });
         }
 
+        // ── Setup: Info ────────────────────────────────────────────────────────
+        const infoWordEl = document.getElementById('info-word');
+        if (infoWordEl) {
+            createWordSlotMachine(infoWordEl, 'Info');
+            addWordDragEvents(infoWordEl);
+            const _openInfo = (e) => {
+                e.preventDefault();
+                if (typeof openInfoViewer === 'function') openInfoViewer(infoWordEl);
+            };
+            infoWordEl.addEventListener('click', _openInfo);
+            infoWordEl.addEventListener('contextmenu', _openInfo);
+        }
+
         // Populate newtro file list from manifest
         if (window.CONTENT_MANIFEST) {
             const newtroEntry = window.CONTENT_MANIFEST.find(m => m.word === 'newtro');
@@ -6799,6 +6820,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/ui/stl-viewer.js"></script>
+    <script src="js/ui/info-viewer.js"></script>
     <script>
         // Initialize STL viewer on page load
         if (typeof initStlViewer === 'function') {
