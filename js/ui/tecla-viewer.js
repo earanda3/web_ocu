@@ -15,8 +15,8 @@
     z-index: 620;
     width: 680px;
     min-width: 380px;
-    height: 530px;
-    min-height: 340px;
+    height: 560px;
+    min-height: 360px;
     display: none;
     flex-direction: column;
     background: var(--tv-bg, #ffffff);
@@ -161,31 +161,35 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 5px;
     flex-shrink: 0;
-    max-width: 270px;
+    max-width: 300px;
 }
 .tv-btn {
     aspect-ratio: 1;
-    border: 1.5px solid var(--tv-el, #222);
-    border-radius: 6px;
+    border: 2px solid var(--tv-el, #222);
+    border-radius: 8px;
     background: transparent;
     color: var(--tv-el, #222);
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0.45;
+    opacity: 0.65;
     transition: opacity 0.08s, background 0.08s, color 0.08s;
     user-select: none;
     touch-action: none;
-    letter-spacing: 0.5px;
+    letter-spacing: 0;
 }
-.tv-btn:hover { opacity: 0.7; }
+.tv-btn:hover { opacity: 0.9; }
 .tv-btn.pressed {
     background: var(--tv-el, #222);
     color: var(--tv-bg, #fff);
     opacity: 1;
+}
+.tv-btn.layer-key {
+    border-style: dashed;
+    opacity: 0.85;
 }
 
 /* ── Pots ── */
@@ -413,11 +417,58 @@
             const baseCode = await fetch('py/base_mode.py').then(r => r.text());
             this.pyodide.FS.writeFile('/tecla/modes/base_mode.py', baseCode);
 
-            // Load music_constants so mode_keyboard can import it
-            try {
-                const mcCode = await fetch('py/music_constants.py').then(r => r.text());
-                this.pyodide.FS.writeFile('/tecla/music_constants.py', mcCode);
-            } catch { }
+            // Inline music_constants.py — no server fetch needed
+            this.pyodide.FS.writeFile('/tecla/music_constants.py', `SCALES = (
+    (0, 2, 4, 5, 7, 9, 11),
+    (0, 2, 3, 5, 7, 9, 10),
+    (0, 1, 3, 5, 7, 8, 10),
+    (0, 2, 4, 6, 7, 9, 11),
+    (0, 2, 4, 5, 7, 9, 10),
+    (0, 2, 3, 5, 7, 8, 10),
+    (0, 1, 3, 5, 6, 8, 10),
+    (0, 2, 4, 7, 9),
+    (0, 3, 5, 7, 10),
+    (0, 1, 4, 6, 7),
+    (0, 2, 5, 7, 9),
+    (0, 1, 4, 5, 7, 8, 11),
+    (0, 2, 3, 6, 7, 9, 10),
+    (0, 2, 4, 6, 7, 9, 10),
+    (0, 1, 3, 4, 6, 8, 10),
+    (0, 2, 3, 5, 7, 9, 11),
+    (0, 1, 4, 5, 7, 8, 11),
+    (0, 1, 3, 6, 7, 8, 11),
+    (0, 1, 4, 5, 7, 8, 10),
+    (0, 1, 4, 5, 7, 9, 11),
+    (0, 1, 3, 5, 7, 8, 10),
+    (0, 1, 4, 5, 7, 8, 11),
+    (0, 2, 4, 6, 8, 10),
+    (0, 2, 4, 5, 7, 8, 11),
+)
+SCALE_NAMES = (
+    'Jonic (Major)', 'Doric', 'Frigi', 'Lidi', 'Mixolidi',
+    'Eolic (Minor)', 'Locri', 'Pentatonica Major', 'Pentatonica Menor',
+    'Japonesa', 'Egipcia', 'Arabiga', 'Hongaresa Menor', 'Lidia Dominant',
+    'Alterada', 'Menor Melodica', 'Raga Bhairav', 'Raga Todi', 'Flamenca',
+    'Catalana', 'Frigia', 'Balcanica', 'Tons Sencers', 'Harmonica Major',
+)
+ARP_DIRS = (
+    'up', 'down', 'pingpong', 'random', 'order',
+    'alberti', 'alberti_alt', 'waltz', 'broken', 'tremolo',
+    'zigzag', 'block', 'rolled', 'octaves', 'contrary', 'spread'
+)
+KEYS = (0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5)
+NOTES = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B')
+CHORDS = {
+    'Major': (0, 4, 7), 'm': (0, 3, 7), '7': (0, 4, 7, 10),
+    'maj7': (0, 4, 7, 11), 'm7': (0, 3, 7, 10), 'dim': (0, 3, 6),
+    'aug': (0, 4, 8), 'sus4': (0, 5, 7), 'sus2': (0, 2, 7),
+}
+def note_offset(note_name):
+    try:
+        return NOTES.index(note_name)
+    except ValueError:
+        return 0
+`);
 
             this.state = this.pyodide.globals.get('_state');
             this.isReady = true;
@@ -573,6 +624,12 @@ _active_mode.update(
     let statusEl = null, logEl = null;
     const MAX_LOG = 40;
 
+    // ── Layer-switching state ──────────────────────────────────────────────────
+    let _layer         = 0;                      // 0 = keyboard, 1 = button-mode
+    let _btnModes      = new Array(12).fill(null); // {file, name} per slot
+    let _assignPending = null;                    // mode awaiting slot assignment
+    let _gridBtns      = [];                      // references to 16 grid buttons
+
     // ── Log helper ────────────────────────────────────────────────────────────
     function addLog(msg, type = 'info') {
         logLines.push({ msg, type });
@@ -651,7 +708,14 @@ _active_mode.update(
         teclatBtn.textContent = '★ Teclat';
         teclatBtn.title = 'mode_keyboard.py';
         teclatBtn.style.fontWeight = '600';
-        teclatBtn.onclick = () => loadModeByFile('mode_keyboard.py', teclatBtn);
+        teclatBtn.onclick = () => {
+            if (_layer === 1) {
+                _assignPending = { file: 'mode_keyboard.py', name: 'Teclat' };
+                _updateLayerUI();
+            } else {
+                loadModeByFile('mode_keyboard.py', teclatBtn);
+            }
+        };
         modesList.appendChild(teclatBtn);
 
         fetch('py/modes_index.json')
@@ -663,7 +727,14 @@ _active_mode.update(
                     btn.className = 'tv-mode-btn';
                     btn.textContent = m.name;
                     btn.title = m.file;
-                    btn.onclick = () => loadModeByFile(m.file, btn);
+                    btn.onclick = () => {
+                        if (_layer === 1) {
+                            _assignPending = { file: m.file, name: m.name };
+                            _updateLayerUI();
+                        } else {
+                            loadModeByFile(m.file, btn);
+                        }
+                    };
                     modesList.appendChild(btn);
                 });
             })
@@ -679,21 +750,64 @@ _active_mode.update(
         statusEl.textContent = 'Selecciona un mode i prem Init';
 
         // 4×4 grid
+        _gridBtns = [];
         const grid = document.createElement('div');
         grid.className = 'tv-grid';
         for (let i = 0; i < 16; i++) {
             const btn = document.createElement('div');
             btn.className = 'tv-btn';
-            btn.textContent = i + 1;
             btn.dataset.idx = i;
+            // Button 13 (index 12): layer toggle
+            if (i === 12) {
+                btn.textContent = '\u21C5';
+                btn.title = 'Canviar capa';
+                btn.classList.add('layer-key');
+                btn.style.opacity = '0.85';
+            } else {
+                btn.textContent = i + 1;
+            }
+            _gridBtns.push(btn);
 
             const press = () => {
                 if (!sim || !sim.isReady) return;
+
+                // ── Button 13: toggle layer ──
+                if (i === 12) {
+                    _layer = 1 - _layer;
+                    if (_layer === 0) _assignPending = null;
+                    _updateLayerUI();
+                    btn.classList.add('pressed');
+                    setTimeout(() => btn.classList.remove('pressed'), 120);
+                    return;
+                }
+
+                // ── Layer 1: mode assignment / activation ──
+                if (_layer === 1 && i < 12) {
+                    if (_assignPending) {
+                        _btnModes[i] = { ..._assignPending };
+                        _assignPending = null;
+                        addLog(`"${_btnModes[i].name}" \u2192 tecla ${i + 1}`, 'ok');
+                        _updateLayerUI();
+                    } else if (_btnModes[i]) {
+                        const m = _btnModes[i];
+                        _layer = 0;
+                        _assignPending = null;
+                        _updateLayerUI();
+                        loadModeByFile(m.file, activeModeBtn);
+                    } else {
+                        addLog(`Tecla ${i + 1}: sense mode assignat`, 'warn');
+                    }
+                    btn.classList.add('pressed');
+                    setTimeout(() => btn.classList.remove('pressed'), 120);
+                    return;
+                }
+
+                // ── Layer 0: normal keyboard ──
                 sim.pressButton(i);
                 btn.classList.add('pressed');
             };
             const release = () => {
-                if (!sim) return;
+                if (!sim || _layer === 1) return;
                 sim.releaseButton(i);
                 btn.classList.remove('pressed');
             };
@@ -875,6 +989,47 @@ _active_mode.update(
         if (!sim) return;
         startBtn.disabled = !sim.isReady || sim.isRunning || !sim._modeName;
         stopBtn.disabled  = !sim.isRunning;
+    }
+
+    // ── Layer UI update ───────────────────────────────────────────────────────
+    function _updateLayerUI() {
+        const isL1 = _layer === 1;
+        _gridBtns.forEach((b, i) => {
+            if (i === 12) {
+                b.textContent = '\u21C5';
+                b.title = isL1 ? 'Tornar a mode teclat' : 'Canviar a capa modes';
+                b.classList.toggle('layer-key', true);
+                b.style.background = isL1 ? 'var(--tv-el,#222)' : '';
+                b.style.color      = isL1 ? 'var(--tv-bg,#fff)' : '';
+                b.style.opacity    = '1';
+                return;
+            }
+            if (i >= 13) return;
+            if (isL1) {
+                const m = _btnModes[i];
+                const hasPending = !!_assignPending;
+                b.style.fontWeight = m ? '700' : '';
+                b.style.fontSize   = m ? '9px' : '';
+                b.style.opacity    = m ? '0.95' : (hasPending ? '0.5' : '0.3');
+                b.textContent      = m ? m.name.replace('mode_','').replace('.py','').substring(0,6) : (i + 1);
+                b.title            = m ? m.name + '\nPrem per activar' : (hasPending ? 'Prem per assignar' : 'Sense mode');
+            } else {
+                b.style.background = '';
+                b.style.color      = '';
+                b.style.opacity    = '';
+                b.style.fontWeight = '';
+                b.style.fontSize   = '';
+                b.textContent      = i + 1;
+                b.title            = '';
+            }
+        });
+        if (isL1) {
+            setStatus(_assignPending
+                ? `\u2192 Assigna "${_assignPending.name}" \u2014 prem una tecla (1-12)`
+                : 'Capa modes \u21C5 \u2014 selecciona mode + prem tecla per assignar');
+        } else {
+            setStatus(sim?._modeName ? `Mode actiu: ${sim._modeName}` : 'Selecciona un mode');
+        }
     }
 
     // ── Drag ─────────────────────────────────────────────────────────────────
