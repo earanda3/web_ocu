@@ -15,7 +15,7 @@
     z-index: 620;
     width: 680px;
     min-width: 380px;
-    height: 500px;
+    height: 460px;
     min-height: 300px;
     display: none;
     flex-direction: column;
@@ -43,12 +43,12 @@
     flex-shrink: 0;
     background: rgba(128,128,128,0.04);
 }
-.tv-title {
-    font-size: 10px;
-    letter-spacing: 4px;
+.tv-midi-label {
+    font-size: 9px;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    opacity: 0.5;
-    flex: 1;
+    opacity: 0.35;
+    margin-right: 2px;
 }
 .tv-midi-select {
     appearance: none;
@@ -163,7 +163,7 @@
     flex-shrink: 0;
 }
 .tv-btn {
-    aspect-ratio: 1;
+    height: 38px;
     border: 1.5px solid var(--tv-el, #222);
     border-radius: 6px;
     background: transparent;
@@ -498,8 +498,18 @@ _active_mode.update(
             }
         }
 
-        pressButton(idx)  { if (idx >= 0 && idx < 16) this.buttons[idx] = true; }
-        releaseButton(idx){ if (idx >= 0 && idx < 16) this.buttons[idx] = false; }
+        pressButton(idx) {
+            if (idx >= 0 && idx < 16) {
+                this.buttons[idx] = true;
+                if (this.isReady && this.isRunning) this._tick();
+            }
+        }
+        releaseButton(idx) {
+            if (idx >= 0 && idx < 16) {
+                this.buttons[idx] = false;
+                if (this.isReady && this.isRunning) this._tick();
+            }
+        }
         setPot(idx, v)    { if (idx >= 0 && idx < 3) this.pots[idx] = Math.max(0, Math.min(127, v | 0)); }
 
         _log(msg, type = 'info') { this.onLog(msg, type); }
@@ -551,12 +561,13 @@ _active_mode.update(
         const header = document.createElement('div');
         header.className = 'tv-header';
 
-        const title = document.createElement('span');
-        title.className = 'tv-title';
-        title.textContent = '· TECLA · sim ·';
+        const midiLbl = document.createElement('span');
+        midiLbl.className = 'tv-midi-label';
+        midiLbl.textContent = 'MIDI';
 
         midiSelectEl = document.createElement('select');
         midiSelectEl.className = 'tv-midi-select';
+        midiSelectEl.style.flex = '1';
         _populateMidiSelect();
         midiSelectEl.onchange = () => {
             if (webMidi) webMidi.selectOutput(midiSelectEl.value);
@@ -568,7 +579,7 @@ _active_mode.update(
         closeBtn.innerHTML = '&times;';
         closeBtn.onclick = closeTeclaViewer;
 
-        header.appendChild(title);
+        header.appendChild(midiLbl);
         header.appendChild(midiSelectEl);
         header.appendChild(closeBtn);
 
@@ -588,6 +599,15 @@ _active_mode.update(
         modesPanel.appendChild(modesList);
 
         // Populate modes list (async)
+        // Teclat (mode_keyboard) always first
+        const teclatBtn = document.createElement('button');
+        teclatBtn.className = 'tv-mode-btn';
+        teclatBtn.textContent = '★ Teclat';
+        teclatBtn.title = 'mode_keyboard.py';
+        teclatBtn.style.fontWeight = '600';
+        teclatBtn.onclick = () => loadModeByFile('mode_keyboard.py', teclatBtn);
+        modesList.appendChild(teclatBtn);
+
         fetch('py/modes_index.json')
             .then(r => r.json())
             .then(data => {
@@ -776,6 +796,7 @@ _active_mode.update(
             await sim.loadMode(code, file);
             startBtn.disabled = false;
             stopBtn.disabled = false;
+            if (!sim.isRunning) sim.startLoop();
             updateCtrlState();
             setStatus(`Mode actiu: ${sim._modeName}`);
         } catch (e) {
@@ -854,10 +875,10 @@ _active_mode.update(
         if (anchorEl && anchorEl.getBoundingClientRect) {
             const r = anchorEl.getBoundingClientRect();
             modal.style.left = Math.max(0, Math.min(r.left + 40, window.innerWidth  - 700)) + 'px';
-            modal.style.top  = Math.max(0, Math.min(r.top  + 20, window.innerHeight - 520)) + 'px';
+            modal.style.top  = Math.max(0, Math.min(r.top  + 20, window.innerHeight - 480)) + 'px';
         } else {
             modal.style.left = Math.max(0, Math.round((window.innerWidth  - 680) / 2)) + 'px';
-            modal.style.top  = Math.max(0, Math.round((window.innerHeight - 500) / 4)) + 'px';
+            modal.style.top  = Math.max(0, Math.round((window.innerHeight - 460) / 4)) + 'px';
         }
         modal.classList.add('show');
     }

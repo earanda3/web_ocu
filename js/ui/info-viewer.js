@@ -179,8 +179,9 @@ Danke für deinen Besuch <3`,
     height: 580px;
     min-width: 320px;
     min-height: 280px;
-    background: #ffffff;
-    border: 1px solid rgba(0,0,0,0.09);
+    background: var(--info-bg, #ffffff);
+    color: var(--info-el, #222222);
+    border: 1px solid rgba(128,128,128,0.18);
     box-shadow: 0 12px 48px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.05);
     border-radius: 14px;
     overflow: hidden;
@@ -188,6 +189,7 @@ Danke für deinen Besuch <3`,
     flex-direction: column;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     resize: both;
+    transition: background 0.3s, color 0.3s;
 }
 #info-modal.show { display: flex; }
 
@@ -196,8 +198,8 @@ Danke für deinen Besuch <3`,
     align-items: center;
     justify-content: space-between;
     padding: 11px 16px;
-    background: #f7f7f7;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
+    background: rgba(128,128,128,0.06);
+    border-bottom: 1px solid rgba(128,128,128,0.1);
     cursor: move;
     user-select: none;
     touch-action: none;
@@ -207,7 +209,8 @@ Danke für deinen Besuch <3`,
     font-size: 10px;
     letter-spacing: 4px;
     text-transform: uppercase;
-    color: #aaa;
+    color: var(--info-el, #222);
+    opacity: 0.4;
     font-weight: 400;
 }
 .info-header-close {
@@ -218,32 +221,32 @@ Danke für deinen Besuch <3`,
     justify-content: center;
     border-radius: 50%;
     border: none;
-    background: rgba(0,0,0,0.07);
-    color: #777;
+    background: rgba(128,128,128,0.12);
+    color: var(--info-el, #222);
     font-size: 15px;
     cursor: pointer;
     line-height: 1;
     padding: 0;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s;
     flex-shrink: 0;
 }
-.info-header-close:hover { background: rgba(0,0,0,0.14); color: #333; }
+.info-header-close:hover { background: rgba(128,128,128,0.22); }
 
 .info-body {
     flex: 1;
     overflow-y: auto;
     padding: 28px 32px 20px 32px;
     scrollbar-width: thin;
-    scrollbar-color: #ddd transparent;
+    scrollbar-color: rgba(128,128,128,0.25) transparent;
 }
 .info-body::-webkit-scrollbar { width: 5px; }
 .info-body::-webkit-scrollbar-track { background: transparent; }
-.info-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+.info-body::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
 
 .info-text {
     outline: none;
     line-height: 1.75;
-    color: #222;
+    color: var(--info-el, #222);
     min-height: 140px;
     white-space: pre-wrap;
     word-break: break-word;
@@ -251,11 +254,24 @@ Danke für deinen Besuch <3`,
     border-radius: 4px;
     transition: background 0.15s;
 }
-.info-text:focus { background: rgba(0,0,0,0.015); }
+.info-text:focus { background: rgba(128,128,128,0.04); }
 .info-text:empty:before {
     content: attr(data-placeholder);
-    color: #ccc;
+    color: var(--info-el, #ccc);
+    opacity: 0.3;
     pointer-events: none;
+}
+
+/* ── Vida: letters ── */
+.info-text.vida-on {
+    white-space: normal;
+    cursor: default;
+    word-break: break-word;
+}
+#info-modal .letter {
+    display: inline-block;
+    transition: transform 0.05s ease;
+    transform-origin: center bottom;
 }
 
 .info-toolbar {
@@ -263,8 +279,8 @@ Danke für deinen Besuch <3`,
     align-items: center;
     gap: 10px;
     padding: 10px 16px;
-    background: #f7f7f7;
-    border-top: 1px solid rgba(0,0,0,0.06);
+    background: rgba(128,128,128,0.06);
+    border-top: 1px solid rgba(128,128,128,0.1);
     flex-shrink: 0;
     flex-wrap: wrap;
 }
@@ -272,18 +288,18 @@ Danke für deinen Besuch <3`,
 .info-toolbar select {
     appearance: none;
     -webkit-appearance: none;
-    border: 1px solid rgba(0,0,0,0.11);
+    border: 1px solid rgba(128,128,128,0.22);
     border-radius: 7px;
     padding: 4px 26px 4px 10px;
     font-size: 11.5px;
-    color: #555;
-    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23bbb'/%3E%3C/svg%3E") no-repeat right 9px center;
+    color: var(--info-el, #555);
+    background: var(--info-bg, #fff) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23999'/%3E%3C/svg%3E") no-repeat right 9px center;
     cursor: pointer;
     height: 28px;
     min-width: 120px;
     transition: border-color 0.15s;
 }
-.info-toolbar select:focus { outline: none; border-color: rgba(0,0,0,0.22); }
+.info-toolbar select:focus { outline: none; border-color: rgba(128,128,128,0.4); }
 
 .info-size-wrap {
     display: flex;
@@ -292,7 +308,8 @@ Danke für deinen Besuch <3`,
 }
 .info-size-wrap label {
     font-size: 10.5px;
-    color: #aaa;
+    color: var(--info-el, #aaa);
+    opacity: 0.5;
     letter-spacing: 0.5px;
     white-space: nowrap;
 }
@@ -300,7 +317,7 @@ Danke für deinen Besuch <3`,
     -webkit-appearance: none;
     width: 76px;
     height: 2px;
-    background: #ddd;
+    background: rgba(128,128,128,0.22);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
@@ -309,15 +326,16 @@ Danke für deinen Besuch <3`,
     -webkit-appearance: none;
     width: 13px;
     height: 13px;
-    background: #444;
+    background: var(--info-el, #444);
     border-radius: 50%;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: opacity 0.15s;
 }
-.info-size-wrap input[type=range]::-webkit-slider-thumb:hover { background: #111; }
+.info-size-wrap input[type=range]::-webkit-slider-thumb:hover { opacity: 0.7; }
 .info-size-val {
     font-size: 10.5px;
-    color: #888;
+    color: var(--info-el, #888);
+    opacity: 0.55;
     min-width: 28px;
     font-variant-numeric: tabular-nums;
 }
@@ -330,7 +348,8 @@ Danke für deinen Besuch <3`,
 }
 .info-slot-label {
     font-size: 10.5px;
-    color: #aaa;
+    color: var(--info-el, #aaa);
+    opacity: 0.5;
     user-select: none;
     cursor: pointer;
     letter-spacing: 0.5px;
@@ -353,18 +372,21 @@ Danke für deinen Besuch <3`,
 .info-toggle-track {
     position: absolute;
     inset: 0;
-    background: #d8d8d8;
+    background: rgba(128,128,128,0.28);
     border-radius: 10.5px;
     transition: background 0.2s;
 }
-.info-toggle input:checked + .info-toggle-track { background: #3a3a3a; }
+.info-toggle input:checked + .info-toggle-track {
+    background: var(--info-el, #3a3a3a);
+    opacity: 0.8;
+}
 .info-toggle-thumb {
     position: absolute;
     top: 2.5px;
     left: 2.5px;
     width: 16px;
     height: 16px;
-    background: #fff;
+    background: var(--info-bg, #fff);
     border-radius: 50%;
     box-shadow: 0 1px 4px rgba(0,0,0,0.22);
     transition: transform 0.2s;
@@ -374,34 +396,18 @@ Danke für deinen Besuch <3`,
 
 .info-reset {
     font-size: 10.5px;
-    color: #ccc;
+    color: var(--info-el, #aaa);
+    opacity: 0.3;
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
     text-decoration: underline;
     text-underline-offset: 2px;
-    transition: color 0.15s;
+    transition: opacity 0.15s;
     white-space: nowrap;
 }
-.info-reset:hover { color: #999; }
-
-/* ── Vida (slot machine inside) ── */
-@keyframes info-vida-bounce {
-    0%, 76%, 100% { transform: translateY(0) scaleX(1) scaleY(1); }
-    80%  { transform: translateY(-2px) scaleX(1.07) scaleY(0.68); }
-    88%  { transform: translateY(1px) scaleX(0.97) scaleY(1.05); }
-    94%  { transform: translateY(0) scaleX(1) scaleY(1); }
-}
-.info-vida-letter {
-    display: inline-block;
-    animation: info-vida-bounce 1.35s ease-in-out infinite;
-    will-change: transform;
-}
-.info-text.vida-on {
-    cursor: default;
-    white-space: normal;
-}
+.info-reset:hover { opacity: 0.6; }
 `;
 
     // Inject CSS once
@@ -413,34 +419,69 @@ Danke für deinen Besuch <3`,
     }
 
     // ── State ─────────────────────────────────────────────────────
-    let _currentLang = 'ca';
-    let _currentText = TRANSLATIONS.ca;
-    let _vidaActive  = false;
+    let _currentLang  = 'ca';
+    let _currentText  = TRANSLATIONS.ca;
+    let _vidaActive   = false;
+    let _vidaInterval = null;
 
-    // ── Vida helpers ─────────────────────────────────────────────
-    function _wrapWithVida(text) {
-        let counter = 0;
-        return text.split('\n').map(line => {
-            if (!line) return '<br>';
-            return Array.from(line).map(ch => {
-                const delay = ((counter++ * 53) + Math.floor(Math.random() * 180)) % 3600;
-                const safe  = ch.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                return `<span class="info-vida-letter" style="animation-delay:${delay}ms">${safe}</span>`;
-            }).join('');
-        }).join('<br>');
+    // ── Color adaptation ─────────────────────────────────────────
+    function _applyColors(bg, el) {
+        document.documentElement.style.setProperty('--info-bg', bg || '#ffffff');
+        document.documentElement.style.setProperty('--info-el', el || '#222222');
     }
 
+    function _readSiteColors() {
+        const bg = document.body.style.backgroundColor || '#ffffff';
+        const elEl = document.querySelector('#canvas a');
+        const el = elEl ? (elEl.style.color || '#222222') : '#222222';
+        return { bg: bg || '#ffffff', el };
+    }
+
+    // ── Vida helpers (mirrors createWordSlotMachine from interactions.js) ───
     function _enableVida() {
         if (!textEl) return;
         _currentText = _getPlainText();
+
+        // Build span tree
+        const fontsArr = window.fonts || ['font-minecraft', 'font-oregular', 'font-helvetica', 'font-courier'];
+        textEl.innerHTML = '';
         textEl.contentEditable = 'false';
         textEl.classList.add('vida-on');
-        textEl.innerHTML = _wrapWithVida(_currentText);
+
+        const frag = document.createDocumentFragment();
+        Array.from(_currentText).forEach(ch => {
+            if (ch === '\n') {
+                frag.appendChild(document.createElement('br'));
+                return;
+            }
+            const span = document.createElement('span');
+            span.className = 'letter';
+            span.textContent = (ch === ' ') ? '\u00A0' : ch;
+            span.classList.add(fontsArr[Math.floor(Math.random() * fontsArr.length)]);
+            frag.appendChild(span);
+        });
+        textEl.appendChild(frag);
         _vidaActive = true;
+
+        // Single master interval — updates ~7% of letters per tick (like the canvas words)
+        _vidaInterval = setInterval(() => {
+            const spans = textEl.querySelectorAll('span.letter');
+            if (!spans.length) return;
+            const f = window.fonts || ['font-minecraft', 'font-oregular', 'font-helvetica', 'font-courier'];
+            const count = Math.max(1, Math.ceil(spans.length * 0.07));
+            for (let k = 0; k < count; k++) {
+                const span = spans[Math.floor(Math.random() * spans.length)];
+                f.forEach(cls => span.classList.remove(cls));
+                span.classList.add(f[Math.floor(Math.random() * f.length)]);
+                span.style.transform = 'scaleY(0.8)';
+                setTimeout(() => { span.style.transform = 'scaleY(1)'; }, 55);
+            }
+        }, 180);
     }
 
     function _disableVida() {
         if (!textEl) return;
+        if (_vidaInterval) { clearInterval(_vidaInterval); _vidaInterval = null; }
         textEl.classList.remove('vida-on');
         textEl.contentEditable = 'true';
         textEl.textContent = _currentText;
@@ -458,7 +499,10 @@ Danke für deinen Besuch <3`,
         const text = TRANSLATIONS[lang] || TRANSLATIONS.ca;
         _currentText = text;
         if (_vidaActive) {
-            textEl.innerHTML = _wrapWithVida(text);
+            // Rebuild with new text
+            if (_vidaInterval) { clearInterval(_vidaInterval); _vidaInterval = null; }
+            _vidaActive = false;
+            _enableVida();
         } else {
             textEl.textContent = text;
         }
@@ -708,6 +752,10 @@ Danke für deinen Besuch <3`,
     function openInfoViewer(anchorEl) {
         buildModal();
 
+        // Sync colors from current site palette
+        const { bg, el } = _readSiteColors();
+        _applyColors(bg, el);
+
         // Position near anchor, or centered
         if (anchorEl && anchorEl.getBoundingClientRect) {
             const r = anchorEl.getBoundingClientRect();
@@ -722,8 +770,16 @@ Danke für deinen Besuch <3`,
     }
 
     function closeInfoViewer() {
-        if (modal) modal.classList.remove('show');
+        if (modal) {
+            modal.classList.remove('show');
+            if (_vidaActive) _disableVida();
+        }
     }
+
+    // Called from applyColors() in index.html
+    window.infoViewerApplyColors = function(bg, el) {
+        _applyColors(bg, el);
+    };
 
     window.openInfoViewer  = openInfoViewer;
     window.closeInfoViewer = closeInfoViewer;

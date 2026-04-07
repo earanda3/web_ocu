@@ -1666,9 +1666,12 @@
         }
 
         function applyColors(bgColor, elColor) {
-            // Sync TECLA viewer theme if open
+            // Sync floating viewers theme
             if (typeof window.teclaViewerApplyColors === 'function') {
                 try { window.teclaViewerApplyColors(bgColor, elColor); } catch { }
+            }
+            if (typeof window.infoViewerApplyColors === 'function') {
+                try { window.infoViewerApplyColors(bgColor, elColor); } catch { }
             }
             // Apply to background
             document.body.style.backgroundColor = bgColor;
