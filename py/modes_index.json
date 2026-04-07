@@ -65,15 +65,15 @@
       "file": "mode_groove.py"
     },
     {
-      "name": "Hardgroove",
+      "name": "HardGroove",
       "file": "mode_hardgroove.py"
     },
     {
-      "name": "Hardnoise",
+      "name": "HardNoise",
       "file": "mode_hardnoise.py"
     },
     {
-      "name": "Hardtechno",
+      "name": "HardTechno",
       "file": "mode_hardtechno.py"
     },
     {
@@ -81,7 +81,7 @@
       "file": "mode_industrial.py"
     },
     {
-      "name": "Jazz Chords",
+      "name": "Jazz",
       "file": "mode_jazz_chords.py"
     },
     {
@@ -93,7 +93,7 @@
       "file": "mode_mandelbrot.py"
     },
     {
-      "name": "Markov Genre",
+      "name": "MarkovGenre",
       "file": "mode_markov_genre.py"
     },
     {
@@ -105,35 +105,35 @@
       "file": "mode_noise.py"
     },
     {
-      "name": "Ona Caos",
+      "name": "OnaCaos",
       "file": "mode_ona_caos.py"
     },
     {
-      "name": "Ona Pols",
+      "name": "OnaPols",
       "file": "mode_ona_pols.py"
     },
     {
-      "name": "Ona Quadrada",
+      "name": "OnaQuadrada",
       "file": "mode_ona_quadrada.py"
     },
     {
-      "name": "Ona Respiracio",
+      "name": "OnaRespiracio",
       "file": "mode_ona_respiracio.py"
     },
     {
-      "name": "Ona Serra",
+      "name": "OnaSerra",
       "file": "mode_ona_serra.py"
     },
     {
-      "name": "Ona Sinusoidal",
+      "name": "Sinusoidal",
       "file": "mode_ona_sinusoidal.py"
     },
     {
-      "name": "Ona Triangular",
+      "name": "OnaTriangular",
       "file": "mode_ona_triangular.py"
     },
     {
-      "name": "Ona Walk",
+      "name": "OnaWalk",
       "file": "mode_ona_walk.py"
     },
     {
@@ -141,7 +141,7 @@
       "file": "mode_part.py"
     },
     {
-      "name": "Pedaljazz",
+      "name": "PedalJazz",
       "file": "mode_pedaljazz.py"
     },
     {
@@ -153,27 +153,27 @@
       "file": "mode_techno.py"
     },
     {
-      "name": "Toacord",
+      "name": "ToAcord",
       "file": "mode_toacord.py"
     },
     {
-      "name": "Toarc",
+      "name": "ToArc",
       "file": "mode_toarc.py"
     },
     {
-      "name": "Tocampanes",
+      "name": "ToCampanes",
       "file": "mode_tocampanes.py"
     },
     {
-      "name": "Todrone",
+      "name": "ToDrone",
       "file": "mode_todrone.py"
     },
     {
-      "name": "Tojazz",
+      "name": "ToJazz",
       "file": "mode_tojazz.py"
     },
     {
-      "name": "Tormenta",
+      "name": "Tempesta",
       "file": "mode_tormenta.py"
     },
     {

@@ -1401,6 +1401,10 @@
                     try { if (typeof openInfoViewer === 'function') openInfoViewer(el); } catch { }
                     return;
                 }
+                case 'tecla-link-word': { // open TECLA simulator
+                    try { if (typeof openTeclaViewer === 'function') openTeclaViewer(el); } catch { }
+                    return;
+                }
                 default: {
                     // Fallback by textual content for robustness
                     if (wordText === 'color') {
@@ -1662,6 +1666,10 @@
         }
 
         function applyColors(bgColor, elColor) {
+            // Sync TECLA viewer theme if open
+            if (typeof window.teclaViewerApplyColors === 'function') {
+                try { window.teclaViewerApplyColors(bgColor, elColor); } catch { }
+            }
             // Apply to background
             document.body.style.backgroundColor = bgColor;
             // Apply to words (including tao and random file words and color-word) and HUD word
@@ -4281,6 +4289,14 @@
         if (teclaLinkEl) {
             createWordSlotMachine(teclaLinkEl, 'TECLA');
             addWordDragEvents(teclaLinkEl);
+            teclaLinkEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (typeof openTeclaViewer === 'function') openTeclaViewer(teclaLinkEl);
+            });
+            teclaLinkEl.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                if (typeof openTeclaViewer === 'function') openTeclaViewer(teclaLinkEl);
+            });
         }
 
         // ── Setup: Ordre ───────────────────────────────────────────────────────
@@ -6821,6 +6837,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/ui/stl-viewer.js"></script>
     <script src="js/ui/info-viewer.js"></script>
+    <script src="js/ui/tecla-viewer.js"></script>
     <script>
         // Initialize STL viewer on page load
         if (typeof initStlViewer === 'function') {
