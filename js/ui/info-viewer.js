@@ -16,6 +16,160 @@
         document.head.appendChild(link);
     }
 
+    // ── Translations ─────────────────────────────────────────────
+    const TRANSLATIONS = {
+        ca: `Aquest és l'univers ocu, una plataforma d'art digital
+On cada paraula és un món.
+
+Per descobrir-los has de clicar les paraules
+Així, trobaràs el que hi ha a l'interior.
+
+Pots interactuar amb els elements que apareixen
+Clica els objectes 3D per canviar-los el color
+Manipula les Imatges
+Descarrega documents
+Afegeix paraules
+Afegeix arxius
+Investiga-ho!
+
+Pots crear una serp amb la lletra "N" per navegar i descobrir l'univers.
+Es mou amb les fletxetes.
+Pots interactuar amb les paraules xocant-hi
+I menjar els elements que hi neixen
+per anar més de pressa i créixer.
+
+Pots crear una altra serp amb la lletra "M"
+Que es mou amb les lletres W-A-S-D
+I jugar amb algú altre al laberint o a veure qui va més de pressa.
+
+Pots jugar al pong amb la lletra "P"
+I interactuar amb les paraules
+I xocar amb els elements per accelerar la pilota.
+
+Espero que ho gaudeixis
+gràcies per la visita <3`,
+        es: `Este es el universo ocu, una plataforma de arte digital
+Donde cada palabra es un mundo.
+
+Para descubrirlos tienes que hacer clic en las palabras
+Así, encontrarás lo que hay en el interior.
+
+Puedes interactuar con los elementos que aparecen
+Haz clic en los objetos 3D para cambiarles el color
+Manipula las imágenes
+Descarga documentos
+Añade palabras
+Añade archivos
+¡Investígalo!
+
+Puedes crear una serpiente con la letra "N" para navegar y descubrir el universo.
+Se mueve con las flechas.
+Puedes interactuar con las palabras chocando con ellas
+Y comer los elementos que nacen
+para ir más rápido y crecer.
+
+Puedes crear otra serpiente con la letra "M"
+Que se mueve con las letras W-A-S-D
+Y jugar con alguien más en el laberinto o ver quién va más rápido.
+
+Puedes jugar al pong con la letra "P"
+E interactuar con las palabras
+Y chocar con los elementos para acelerar la pelota.
+
+Espero que lo disfrutes
+gracias por la visita <3`,
+        en: `This is the ocu universe, a digital art platform
+Where each word is a world.
+
+To discover them you have to click on the words
+That way, you'll find what's inside.
+
+You can interact with the elements that appear
+Click on 3D objects to change their color
+Manipulate images
+Download documents
+Add words
+Add files
+Explore it!
+
+You can create a snake with the letter "N" to navigate and discover the universe.
+It moves with the arrow keys.
+You can interact with words by colliding with them
+And eat the elements that are born
+to go faster and grow.
+
+You can create another snake with the letter "M"
+That moves with the W-A-S-D keys
+And play with someone else in the maze or see who goes faster.
+
+You can play pong with the letter "P"
+And interact with the words
+And collide with elements to accelerate the ball.
+
+I hope you enjoy it
+thank you for your visit <3`,
+        fr: `Ceci est l'univers ocu, une plateforme d'art numérique
+Où chaque mot est un monde.
+
+Pour les découvrir vous devez cliquer sur les mots
+Ainsi, vous trouverez ce qu'il y a à l'intérieur.
+
+Vous pouvez interagir avec les éléments qui apparaissent
+Cliquez sur les objets 3D pour en changer la couleur
+Manipulez les images
+Téléchargez des documents
+Ajoutez des mots
+Ajoutez des fichiers
+Explorez !
+
+Vous pouvez créer un serpent avec la lettre "N" pour naviguer et découvrir l'univers.
+Il se déplace avec les flèches.
+Vous pouvez interagir avec les mots en les percutant
+Et manger les éléments qui naissent
+pour aller plus vite et grandir.
+
+Vous pouvez créer un autre serpent avec la lettre "M"
+Qui se déplace avec les touches W-A-S-D
+Et jouer avec quelqu'un d'autre dans le labyrinthe ou voir qui va le plus vite.
+
+Vous pouvez jouer au pong avec la lettre "P"
+Et interagir avec les mots
+Et percuter les éléments pour accélérer la balle.
+
+J'espère que vous l'apprécierez
+merci pour votre visite <3`,
+        de: `Dies ist das ocu-Universum, eine digitale Kunstplattform
+Wo jedes Wort eine Welt ist.
+
+Um sie zu entdecken, musst du auf die Wörter klicken
+So findest du heraus, was sich darin verbirgt.
+
+Du kannst mit den Elementen interagieren, die erscheinen
+Klicke auf 3D-Objekte, um ihre Farbe zu ändern
+Bilder manipulieren
+Dokumente herunterladen
+Wörter hinzufügen
+Dateien hinzufügen
+Erkunde es!
+
+Du kannst eine Schlange mit der Taste "N" erstellen, um das Universum zu navigieren.
+Sie bewegt sich mit den Pfeiltasten.
+Du kannst mit Wörtern interagieren, indem du mit ihnen kollidierst
+Und die entstehenden Elemente fressen
+um schneller zu werden und zu wachsen.
+
+Du kannst eine weitere Schlange mit der Taste "M" erstellen
+Die sich mit den Tasten W-A-S-D bewegt
+Und mit jemand anderem im Labyrinth spielen.
+
+Du kannst mit der Taste "P" Pong spielen
+Und mit den Wörtern interagieren
+Und mit Elementen kollidieren, um den Ball zu beschleunigen.
+
+Ich hoffe, du genießt es
+Danke für deinen Besuch <3`,
+    };
+
     // ── CSS ──────────────────────────────────────────────────────
     const CSS = `
 #info-modal {
@@ -231,6 +385,23 @@
     white-space: nowrap;
 }
 .info-reset:hover { color: #999; }
+
+/* ── Vida (slot machine inside) ── */
+@keyframes info-vida-bounce {
+    0%, 76%, 100% { transform: translateY(0) scaleX(1) scaleY(1); }
+    80%  { transform: translateY(-2px) scaleX(1.07) scaleY(0.68); }
+    88%  { transform: translateY(1px) scaleX(0.97) scaleY(1.05); }
+    94%  { transform: translateY(0) scaleX(1) scaleY(1); }
+}
+.info-vida-letter {
+    display: inline-block;
+    animation: info-vida-bounce 1.35s ease-in-out infinite;
+    will-change: transform;
+}
+.info-text.vida-on {
+    cursor: default;
+    white-space: normal;
+}
 `;
 
     // Inject CSS once
@@ -241,38 +412,57 @@
         document.head.appendChild(style);
     }
 
-    // ── Default text ─────────────────────────────────────────────
-    const DEFAULT_TEXT =
-`Aquest és l'univers ocu, una plataforma d'art digital
-On cada paraula és un món.
+    // ── State ─────────────────────────────────────────────────────
+    let _currentLang = 'ca';
+    let _currentText = TRANSLATIONS.ca;
+    let _vidaActive  = false;
 
-Per descobrir-los has de clicar les paraules
-Així, trobaràs el que hi ha a l'interior.
+    // ── Vida helpers ─────────────────────────────────────────────
+    function _wrapWithVida(text) {
+        let counter = 0;
+        return text.split('\n').map(line => {
+            if (!line) return '<br>';
+            return Array.from(line).map(ch => {
+                const delay = ((counter++ * 53) + Math.floor(Math.random() * 180)) % 3600;
+                const safe  = ch.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="info-vida-letter" style="animation-delay:${delay}ms">${safe}</span>`;
+            }).join('');
+        }).join('<br>');
+    }
 
-Pots interactuar amb els elements que apareixen
-Clica els objectes 3D per canviar-los el color
-Manipula les Imatges
-Descarrega documents
-Afegeix paraules
-Afegeix arxius
-Investiga-ho!
+    function _enableVida() {
+        if (!textEl) return;
+        _currentText = _getPlainText();
+        textEl.contentEditable = 'false';
+        textEl.classList.add('vida-on');
+        textEl.innerHTML = _wrapWithVida(_currentText);
+        _vidaActive = true;
+    }
 
-Pots crear una serp amb la lletra "N" per navegar i descobrir l'univers.
-Es mou amb les fletxetes.
-Pots interactuar amb les paraules xocant-hi
-I menjar els elements que hi neixen
-per anar més de pressa i créixer.
+    function _disableVida() {
+        if (!textEl) return;
+        textEl.classList.remove('vida-on');
+        textEl.contentEditable = 'true';
+        textEl.textContent = _currentText;
+        _vidaActive = false;
+    }
 
-Pots crear una altra serp amb la lletra "M"
-Que es mou amb les lletres W-A-S-D
-I jugar amb algú altre al laberint o a veure qui va més de pressa.
+    function _getPlainText() {
+        if (!textEl) return '';
+        if (_vidaActive) return _currentText;
+        return textEl.textContent;
+    }
 
-Pots jugar al pong amb la lletra "P"
-I interactuar amb les paraules
-I xocar amb els elements per accelerar la pilota.
-
-Espero que ho gaudeixis
-gràcies per la visita <3`;
+    function _setLang(lang) {
+        _currentLang = lang;
+        const text = TRANSLATIONS[lang] || TRANSLATIONS.ca;
+        _currentText = text;
+        if (_vidaActive) {
+            textEl.innerHTML = _wrapWithVida(text);
+        } else {
+            textEl.textContent = text;
+        }
+    }
 
     // ── Font catalogue ───────────────────────────────────────────
     const FONTS = [
@@ -291,6 +481,7 @@ gràcies per la visita <3`;
     let sizeVal    = null;
     let fontSelect = null;
     let slotToggle = null;
+    let langSelect = null;
 
     // ── Build modal (idempotent) ─────────────────────────────────
     function buildModal() {
@@ -299,7 +490,8 @@ gràcies per la visita <3`;
             textEl     = modal.querySelector('.info-text');
             sizeRange  = modal.querySelector('input[type=range]');
             sizeVal    = modal.querySelector('.info-size-val');
-            fontSelect = modal.querySelector('select');
+            fontSelect = modal.querySelector('.info-font-select');
+            langSelect = modal.querySelector('.info-lang-select');
             slotToggle = modal.querySelector('.info-toggle input');
             return;
         }
@@ -333,9 +525,13 @@ gràcies per la visita <3`;
         textEl.contentEditable = 'true';
         textEl.setAttribute('data-placeholder', 'Escriu aquí…');
         textEl.spellcheck = false;
-        textEl.textContent = DEFAULT_TEXT;
+        textEl.textContent = TRANSLATIONS.ca;
         textEl.style.fontSize = '17px';
 
+        // Sync _currentText on edit
+        textEl.addEventListener('input', () => {
+            if (!_vidaActive) _currentText = textEl.textContent;
+        });
         // Prevent drag events from bubbling to canvas pan
         textEl.addEventListener('mousedown', e => e.stopPropagation());
         textEl.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
@@ -348,6 +544,7 @@ gràcies per la visita <3`;
 
         // Font selector
         fontSelect = document.createElement('select');
+        fontSelect.className = 'info-font-select';
         fontSelect.title = 'Tipografia';
         FONTS.forEach(f => {
             const opt = document.createElement('option');
@@ -382,35 +579,36 @@ gràcies per la visita <3`;
         sizeWrap.appendChild(sizeRange);
         sizeWrap.appendChild(sizeVal);
 
-        // Slot machine toggle
+        // Language selector
+        langSelect = document.createElement('select');
+        langSelect.className = 'info-lang-select';
+        langSelect.title = 'Idioma';
+        [['ca','Català'], ['es','Castellano'], ['en','English'], ['fr','Français'], ['de','Deutsch']]
+            .forEach(([code, label]) => {
+                const opt = document.createElement('option');
+                opt.value = code; opt.textContent = label;
+                langSelect.appendChild(opt);
+            });
+        langSelect.onchange = () => _setLang(langSelect.value);
+
+        // Vida toggle (slot machine inside the window)
         const slotWrap = document.createElement('div');
         slotWrap.className = 'info-slot-wrap';
 
         const slotLbl = document.createElement('span');
         slotLbl.className   = 'info-slot-label';
-        slotLbl.textContent = 'Slot';
+        slotLbl.textContent = 'vida';
 
         const toggleLabel = document.createElement('label');
         toggleLabel.className = 'info-toggle';
-        toggleLabel.title     = 'Activar/desactivar slot machine';
+        toggleLabel.title     = 'Activar/desactivar vida';
 
         slotToggle = document.createElement('input');
         slotToggle.type    = 'checkbox';
-        slotToggle.checked = !window.__slotFrozen;
+        slotToggle.checked = false;
         slotToggle.onchange = () => {
-            if (slotToggle.checked) {
-                window.__slotFrozen   = false;
-                window.__introFrozen  = false;
-                if (typeof window.resumeAllSlotMachines === 'function') {
-                    window.resumeAllSlotMachines();
-                }
-            } else {
-                window.__slotFrozen  = true;
-                window.__introFrozen = true;
-                if (typeof window.clearAllSlotIntervals === 'function') {
-                    window.clearAllSlotIntervals();
-                }
-            }
+            if (slotToggle.checked) { _enableVida(); }
+            else                    { _disableVida(); }
         };
 
         const toggleTrack = document.createElement('span');
@@ -431,7 +629,13 @@ gràcies per la visita <3`;
         resetBtn.textContent = 'reset';
         resetBtn.title       = 'Restaurar valors per defecte';
         resetBtn.onclick = () => {
-            textEl.textContent      = DEFAULT_TEXT;
+            // Turn off vida first
+            if (_vidaActive) { slotToggle.checked = false; _disableVida(); }
+            // Reset lang
+            _currentLang = 'ca';
+            langSelect.value = 'ca';
+            _currentText = TRANSLATIONS.ca;
+            textEl.textContent      = TRANSLATIONS.ca;
             sizeRange.value         = '17';
             sizeVal.textContent     = '17px';
             textEl.style.fontSize   = '17px';
@@ -441,6 +645,7 @@ gràcies per la visita <3`;
 
         toolbar.appendChild(fontSelect);
         toolbar.appendChild(sizeWrap);
+        toolbar.appendChild(langSelect);
         toolbar.appendChild(slotWrap);
         toolbar.appendChild(resetBtn);
 
@@ -512,9 +717,6 @@ gràcies per la visita <3`;
             modal.style.left = Math.max(0, Math.round((window.innerWidth  - 520) / 2)) + 'px';
             modal.style.top  = Math.max(0, Math.round((window.innerHeight - 560) / 4)) + 'px';
         }
-
-        // Sync toggle state with current slot status
-        if (slotToggle) slotToggle.checked = !window.__slotFrozen;
 
         modal.classList.add('show');
     }
