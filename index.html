@@ -2667,10 +2667,11 @@
 
             const VISIBLE = [
                 'cw-ocu', 'cw-ocu3d', 'tecla-link-word', 'newtro-word',
-                'info-word', 'about-btn', 'laberint-word', 'serp-word',
+                'info-word', 'laberint-word', 'serp-word',
                 'color-word', 'cw-zines'
             ];
             const HIDDEN = [
+                'about-btn',
                 'afegir-word', 'arxius-word', 'ordre-word', 'currency',
                 'stop-word', 'reset-word', 'pixel-word', 'pong-word',
                 'tecla-word', 'tuktuk-word', 'unitat-word',
@@ -2678,7 +2679,7 @@
                 'start-word', 'text-word', 'tao', 'soroboru-word'
             ];
 
-            // 4 cols × 3 rows grid → 12 cells, shuffle, assign 10 visible words
+            // 4 cols × 3 rows grid → 12 cells, shuffle, assign visible words
             const COLS = 4, ROWS = 3;
             const cellW = vw / COLS;
             const cellH = vh / ROWS;
@@ -2702,11 +2703,27 @@
                 el.style.top  = Math.round(top  - py) + 'px';
             });
 
+            // Spread hidden words around all 4 sides of the viewport
             HIDDEN.forEach((id, i) => {
                 const el = document.getElementById(id);
                 if (!el) return;
-                el.style.left = Math.round(vw + 300 + (i % 5) * 200 - px) + 'px';
-                el.style.top  = Math.round(80  + Math.floor(i / 5) * 120 - py) + 'px';
+                const side = i % 4;
+                let left, top;
+                if (side === 0) {        // right
+                    left = vw + 100 + Math.random() * 250;
+                    top  = 60  + Math.random() * (vh - 120);
+                } else if (side === 1) { // bottom
+                    left = 60  + Math.random() * (vw - 120);
+                    top  = vh  + 100 + Math.random() * 250;
+                } else if (side === 2) { // left
+                    left = -(150 + Math.random() * 250);
+                    top  = 60  + Math.random() * (vh - 120);
+                } else {                 // top
+                    left = 60  + Math.random() * (vw - 120);
+                    top  = -(80 + Math.random() * 200);
+                }
+                el.style.left = Math.round(left - px) + 'px';
+                el.style.top  = Math.round(top  - py) + 'px';
             });
         }
 
