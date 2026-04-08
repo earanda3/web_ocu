@@ -1680,36 +1680,30 @@
             words.forEach(w => {
                 w.style.color = elColor;
             });
-            // Apply to images: add a subtle border in chosen color
+            // Apply to images: recolor SVGs to match theme
             const imgs = document.querySelectorAll('#canvas img');
             imgs.forEach(img => {
-                // For SVG images, change the fill color
-                if (img.src && img.src.includes('.svg')) {
-                    // Load SVG and modify fill color
-                    fetch(img.src)
-                        .then(response => response.text())
+                // Persist the original SVG URL before it gets replaced by a blob URL
+                const isSvg = img.dataset.originalSrc?.includes('.svg') ||
+                              (img.src && img.src.includes('.svg'));
+                if (isSvg) {
+                    if (!img.dataset.originalSrc) img.dataset.originalSrc = img.src;
+                    fetch(img.dataset.originalSrc)
+                        .then(r => r.text())
                         .then(svgText => {
-                            // Replace all fill colors in SVG (including #000000, black, etc.)
-                            let modifiedSvg = svgText.replace(/fill="#[^"]*"/g, `fill="${elColor}"`);
-                            modifiedSvg = modifiedSvg.replace(/fill='#[^']*'/g, `fill='${elColor}'`);
-                            modifiedSvg = modifiedSvg.replace(/fill="#000000"/g, `fill="${elColor}"`);
-                            modifiedSvg = modifiedSvg.replace(/fill="black"/g, `fill="${elColor}"`);
-                            modifiedSvg = modifiedSvg.replace(/fill="none"/g, `fill="${elColor}"`);
-
-                            const blob = new Blob([modifiedSvg], { type: 'image/svg+xml' });
+                            // Replace hex and named fill colors; leave fill="none" (transparent) untouched
+                            let s = svgText.replace(/fill="#[^"]*"/g, `fill="${elColor}"`);
+                            s = s.replace(/fill='#[^']*'/g, `fill='${elColor}'`);
+                            s = s.replace(/fill="black"/g, `fill="${elColor}"`);
+                            s = s.replace(/fill='black'/g, `fill='${elColor}'`);
+                            const blob = new Blob([s], { type: 'image/svg+xml' });
                             const url = URL.createObjectURL(blob);
-
-                            // Clean up previous blob URL
-                            if (img.dataset.blobUrl) {
-                                URL.revokeObjectURL(img.dataset.blobUrl);
-                            }
+                            if (img.dataset.blobUrl) URL.revokeObjectURL(img.dataset.blobUrl);
                             img.dataset.blobUrl = url;
                             img.src = url;
                         })
                         .catch(() => {
-                            // Fallback: just add border
                             img.style.border = `1px solid ${elColor}`;
-                            img.style.borderRadius = '3px';
                         });
                 } else {
                     img.style.border = `1px solid ${elColor}`;
