@@ -748,6 +748,8 @@
                 if (typeof fetchContentManifest === 'function') {
                     try { fetchContentManifest(); } catch { }
                 }
+                // Position words: 10 visible ones spread in viewport, rest outside
+                setTimeout(initWordPositions, 150);
             }
 
 
@@ -2653,6 +2655,58 @@
                 const ny = Math.min(Math.max(r.top, safeY), maxTop);
                 el.style.left = nx + 'px';
                 el.style.top = ny + 'px';
+            });
+        }
+
+        // Spread 10 key words across viewport; push all others outside
+        function initWordPositions() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const px = (typeof panX !== 'undefined' ? panX : 0);
+            const py = (typeof panY !== 'undefined' ? panY : 0);
+
+            const VISIBLE = [
+                'cw-ocu', 'cw-ocu3d', 'tecla-link-word', 'newtro-word',
+                'info-word', 'about-btn', 'laberint-word', 'serp-word',
+                'color-word', 'cw-zines'
+            ];
+            const HIDDEN = [
+                'afegir-word', 'arxius-word', 'ordre-word', 'currency',
+                'stop-word', 'reset-word', 'pixel-word', 'pong-word',
+                'tecla-word', 'tuktuk-word', 'unitat-word',
+                'minus-word', 'asterisk-word', 'borrador-word',
+                'start-word', 'text-word', 'tao', 'soroboru-word'
+            ];
+
+            // 4 cols × 3 rows grid → 12 cells, shuffle, assign 10 visible words
+            const COLS = 4, ROWS = 3;
+            const cellW = vw / COLS;
+            const cellH = vh / ROWS;
+            const pad = 50;
+            const cells = [];
+            for (let r = 0; r < ROWS; r++)
+                for (let c = 0; c < COLS; c++)
+                    cells.push({ r, c });
+            for (let i = cells.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [cells[i], cells[j]] = [cells[j], cells[i]];
+            }
+
+            VISIBLE.forEach((id, i) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const { r, c } = cells[i];
+                const left = c * cellW + pad + Math.random() * Math.max(0, cellW - pad * 2 - 100);
+                const top  = r * cellH + pad + Math.random() * Math.max(0, cellH - pad * 2 - 40);
+                el.style.left = Math.round(left - px) + 'px';
+                el.style.top  = Math.round(top  - py) + 'px';
+            });
+
+            HIDDEN.forEach((id, i) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.left = Math.round(vw + 300 + (i % 5) * 200 - px) + 'px';
+                el.style.top  = Math.round(80  + Math.floor(i / 5) * 120 - py) + 'px';
             });
         }
 
