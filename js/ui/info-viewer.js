@@ -639,7 +639,7 @@ W-A-S-D 키로 이동합니다
 
         const titleSpan = document.createElement('span');
         titleSpan.className = 'info-header-title';
-        titleSpan.textContent = '· ocu · info ·';
+        titleSpan.textContent = '';
 
         const closeBtn = document.createElement('button');
         closeBtn.className = 'info-header-close';
