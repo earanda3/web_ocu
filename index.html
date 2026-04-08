@@ -4292,7 +4292,7 @@
             });
             teclaLinkEl.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                if (typeof openTeclaViewer === 'function') openTeclaViewer(teclaLinkEl);
+                if (typeof openStlViewer === 'function') openStlViewer('content/ocu3D/Teclaedu.stl');
             });
         }
 
@@ -4881,14 +4881,14 @@ addWordDragEvents(teclaWord);
 teclaWord.addEventListener('contextmenu', (e) => {
 e.preventDefault();
 if (typeof openStlViewer === 'function') {
-openStlViewer('content/ocu3D/XDA_STL.stl');
+openStlViewer('content/ocu3D/Teclaedu.stl');
 }
 });
 
 // Mobile: double-tap opens STL viewer
 addMobileDoubleTap(teclaWord, () => {
 if (typeof openStlViewer === 'function') {
-openStlViewer('content/ocu3D/XDA_STL.stl');
+openStlViewer('content/ocu3D/Teclaedu.stl');
 }
 });
 }
@@ -5008,14 +5008,14 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             teclaWord.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 if (typeof openStlViewer === 'function') {
-                    openStlViewer('content/ocu3D/XDA_STL.stl');
+                    openStlViewer('content/ocu3D/Teclaedu.stl');
                 }
             });
 
             // Mobile: double-tap opens STL viewer
             addMobileDoubleTap(teclaWord, () => {
                 if (typeof openStlViewer === 'function') {
-                    openStlViewer('content/ocu3D/XDA_STL.stl');
+                    openStlViewer('content/ocu3D/Teclaedu.stl');
                 }
             });
         }
