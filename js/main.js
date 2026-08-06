@@ -170,7 +170,7 @@ function playIntro() {
             'ensureStopWord', 'ensureStartWord', 'ensureTextWord', 'ensureUnitatWord',
             'ensureResetWord', 'ensureBorradorWord', 'ensureMinusWord', 'ensureAsteriskWord',
             'ensureSerpWord', 'ensurePixelWord', 'ensureLaberintWord', 'ensurePongWord',
-            'ensure3dWord'
+            'ensure3dWord', 'ensureKukiWord'
         ];
 
         ensureFunctions.forEach(fnName => {

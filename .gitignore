@@ -19,8 +19,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -40,3 +38,21 @@ wheels/
 
 # Runtime
 node_modules/
+
+# Giant 3D source files at repo root (multi-GB Shapr3D exports — never on the web).
+# NOTE: content/ocu3D/*.stl are real, served models and stay tracked.
+/*.stl
+/content/0Kares.stl
+
+# Local design sources not needed on the web
+*.toe
+/Group-PDF-Export 22.pdf
+
+# Deploy / diagnostic cruft — never commit these again
+*.zip
+diag*.php
+github_deploy.php
+update.zip
+index_backup.html
+Backup/
+testdir/

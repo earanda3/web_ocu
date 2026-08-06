@@ -1,50 +1,56 @@
-# Plataforma de PDFs
+# ocu — univers interactiu
 
-Una plataforma web senzilla per compartir i descarregar arxius PDF.
+Web experimental i creativa publicada a **[ocu.cat](https://ocu.cat)**. Un llenç
+(canvas) infinit on cada paraula és un món: tipografies que giren com una
+màquina escurabutxaques, jocs, visors de contingut i eines interactives.
 
-## Característiques
+## Què hi ha
 
-- Interfície neta amb fons blanc
-- Visualització automàtica de tots els PDFs disponibles
-- Descàrrega directa dels arxius
-- Responsive design
-- Servidor Python integrat
+- **Llenç interactiu** — paraules arrossegables amb efectes tipogràfics i de color.
+- **Jocs** — Snake (amb galetes "Kuki" que fan la serp més ampla i un boost del
+  conill), Pong i un laberint.
+- **Visor 3D (STL)** — models a `content/ocu3D/` renderitzats amb three.js.
+- **Visor de PDF** — zines i documents (`content/zines/`), amb pdf.js (`lib/`).
+- **Tecla** — teclat/simulador MIDI (WebMIDI).
+- **Temes** — color de fons i d'elements personalitzables en directe.
 
-## Com utilitzar-la
+Idioma per defecte: català.
 
-1. **Iniciar el servidor:**
-   ```bash
-   python3 server.py
-   ```
-
-2. **Obrir el navegador:**
-   - Ves a `http://localhost:8000`
-
-3. **Afegir nous PDFs:**
-   - Simplement copia els arxius PDF a la carpeta del projecte
-   - Es mostraran automàticament a la web
-
-## Estructura del projecte
+## Estructura
 
 ```
-pdf-platform/
-├── server.py              # Servidor Python
-├── index.html             # Interfície web
-├── README.md              # Aquesta documentació
-└── *.pdf                  # Els teus arxius PDF
+index.html          # App principal (canvas, jocs, lògica — actualment monolítica)
+css/style.css       # Estils extrets
+js/                 # Mòduls (stl-viewer, info-viewer, tecla-viewer s'usen;
+                    #   la resta és una refactorització en curs, encara no carregada)
+lib/                # pdf.js + visor de PDF (vendored)
+content/            # Contingut: ocu3D/ (STL), zines/ (PDF), newtro/, kuki/ ...
+assets/             # Imatges de la interfície (kuki, sinte, ...)
+fonts/              # Tipografies (Minecraft, O-Regular)
+.github/workflows/  # Desplegament automàtic per FTP
 ```
 
-## Funcionalitats
+## Desenvolupament local
 
-- **Llistat automàtic**: Tots els PDFs de la carpeta es mostren automàticament
-- **Descàrrega segura**: Els arxius es serveixen amb els headers correctes
-- **Informació dels arxius**: Es mostra la mida de cada PDF
-- **Interfície moderna**: Disseny net i fàcil d'utilitzar
+```bash
+python3 server.py       # servidor estàtic senzill
+# o
+python3 -m http.server 8000
+```
+
+Obre `http://localhost:8000`.
+
+## Desplegament
+
+Cada `push` a `main` desplega automàticament a ocu.cat via FTPS
+(`.github/workflows/deploy.yml`). Requereix els secrets de repositori
+`FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` i `FTP_DIR`.
+
+> ⚠️ El mètode antic (`github_deploy.php` + token públic) s'ha retirat per
+> raons de seguretat. No el tornis a pujar al servidor.
 
 ## Notes tècniques
 
-- El servidor funciona per defecte al port 8000
-- Si el port està ocupat, automàticament prova el següent
-- Compatible amb tots els navegadors moderns
-- Suporta arxius PDF de qualsevol mida
- 
+- Fitxers `.stl` grans (arrel del repo) **no** es versionen ni es despleguen;
+  serveix els models des de `content/ocu3D/` o emmagatzematge extern.
+- `three.js` i `pdf.js` es carreguen des de CDN; `lib/` en manté una còpia local.

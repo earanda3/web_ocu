@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ocu</title>
-    <link rel="icon" href="ocugat.svg" type="image/svg+xml">
+    <link rel="icon" href="ocugat.png" type="image/png">
     <link rel="stylesheet" href="lib/pdf-viewer.css">
     <style>
         * {
@@ -483,7 +483,7 @@
             style="position: absolute; left: 100px; top: 300px; font-size: 24px; color: #333; cursor: move; user-select: none;">
         </div>
         <div id="about-btn" style="position: absolute; left: 200px; top: 200px; cursor: move; user-select: none;">
-            <img src="ocugat.svg" alt="About" width="60" height="60" draggable="false">
+            <img src="ocugat.png" alt="About" width="60" height="60" draggable="false">
         </div>
         <!-- New draggable word: color -->
         <a id="color-word" href="#"
@@ -736,7 +736,8 @@
                     'ensureStopWord', 'ensureResetWord',
                     'ensureSerpWord',
                     'ensurePixelWord', 'ensureLaberintWord', 'ensurePongWord',
-                    'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord'
+                    'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord',
+                    'ensureKukiWord'
                 ];
 
                 ensureFunctions.forEach(fnName => {
@@ -1721,6 +1722,8 @@
             try { updateHazardPixelColors(elColor); } catch { }
             // Recolor/redraw mazes and portal pixels
             try { recolorAllMazes(); } catch { }
+            // Recolor mask-based raster images (kuki cookies, about-cat logo, ...)
+            try { if (typeof recolorMaskedImages === 'function') recolorMaskedImages(elColor); } catch { }
         }
 
         // Resume all slot machines by rebuilding intervals on existing elements
@@ -2825,11 +2828,77 @@
         try { snakeHighScore = parseInt(localStorage.getItem('snakeHighScore') || '0'); } catch { }
         const SNAKE_BASE_MS = 85;
         const SNAKE_MIN_MS = 30;
+
+        // Kuki cookies make the snake grow WIDER (thicker) instead of longer.
+        window.__snakeWidthBonus = window.__snakeWidthBonus || 0;
+        const KUKI_WIDTH_STEP = 6;   // px added to segment thickness per cookie eaten
+        const KUKI_WIDTH_MAX = 60;   // cap so it stays playable
+        // Rare Mochikuk3 cookie boosts speed x10 for a few seconds.
+        window.__snakeSpeedBoostUntil = window.__snakeSpeedBoostUntil || 0;
+        const KUKI_BOOST_FACTOR = 10;
+        const KUKI_BOOST_MS = 5000;
+
         function getSnakeSpeed() {
             // Speed up as length grows (or score grows). Start with base, subtract a bit per 3 segments.
             const grow = Math.max(0, snake.length - 4);
             const step = Math.floor(grow / 3);
-            return Math.max(SNAKE_MIN_MS, SNAKE_BASE_MS - step * 5);
+            let ms = Math.max(SNAKE_MIN_MS, SNAKE_BASE_MS - step * 5);
+            // Temporary x10 boost from eating the Mochikuk3 cookie
+            if (Date.now() < (window.__snakeSpeedBoostUntil || 0)) {
+                ms = Math.max(3, Math.round(ms / KUKI_BOOST_FACTOR));
+            }
+            return ms;
+        }
+
+        // Trigger a temporary snake speed boost (x10) for the given duration.
+        function triggerSnakeSpeedBoost(ms) {
+            const dur = ms || KUKI_BOOST_MS;
+            window.__snakeSpeedBoostUntil = Date.now() + dur;
+            // Restart timers immediately at the boosted speed
+            try {
+                if (snakeActive) {
+                    if (snakeTimer) clearInterval(snakeTimer);
+                    snakeTimer = setInterval(moveSnakeTick, getSnakeSpeed());
+                }
+            } catch { }
+            try {
+                if (typeof snake2Active !== 'undefined' && snake2Active && typeof moveSnake2Tick === 'function') {
+                    if (typeof snake2Timer !== 'undefined' && snake2Timer) clearInterval(snake2Timer);
+                    snake2Timer = setInterval(moveSnake2Tick, getSnakeSpeed());
+                }
+            } catch { }
+            // Restore normal speed when the boost expires
+            setTimeout(() => {
+                try {
+                    if (snakeActive) {
+                        if (snakeTimer) clearInterval(snakeTimer);
+                        snakeTimer = setInterval(moveSnakeTick, getSnakeSpeed());
+                    }
+                } catch { }
+                try {
+                    if (typeof snake2Active !== 'undefined' && snake2Active && typeof moveSnake2Tick === 'function') {
+                        if (typeof snake2Timer !== 'undefined' && snake2Timer) clearInterval(snake2Timer);
+                        snake2Timer = setInterval(moveSnake2Tick, getSnakeSpeed());
+                    }
+                } catch { }
+            }, dur + 20);
+        }
+        window.triggerSnakeSpeedBoost = triggerSnakeSpeedBoost;
+
+        // Handle the snake eating a Kuki cookie: grow WIDER, not longer.
+        // Returns true if the target was a cookie (so caller can stop further handling).
+        function handleKukiCookieHit(target) {
+            if (!target || !target.classList || !target.classList.contains('kuki-cookie')) return false;
+            const isMochi = target.classList.contains('kuki-mochi') || (target.dataset && target.dataset.mochi === '1');
+            try { target.remove(); } catch { }
+            if (isMochi) {
+                // Rare cookie -> speed x10 boost for a few seconds
+                try { triggerSnakeSpeedBoost(KUKI_BOOST_MS); } catch { }
+            } else {
+                // Normal cookie -> get thicker (wider), not longer
+                window.__snakeWidthBonus = Math.min(KUKI_WIDTH_MAX, (window.__snakeWidthBonus || 0) + KUKI_WIDTH_STEP);
+            }
+            return true;
         }
 
         // HUD helpers
@@ -2943,6 +3012,11 @@
             if (snakeLayer) snakeLayer.innerHTML = '';
             if (snakeTimer) { clearInterval(snakeTimer); snakeTimer = null; }
             if (snakeTimeTimer) { clearInterval(snakeTimeTimer); snakeTimeTimer = null; }
+            // Reset Kuki width/speed bonuses when no snake remains active
+            if (typeof snake2Active === 'undefined' || !snake2Active) {
+                window.__snakeWidthBonus = 0;
+                window.__snakeSpeedBoostUntil = 0;
+            }
 
             // Clean up pixel mode goal
             try {
@@ -3000,12 +3074,20 @@
             const frag = document.createDocumentFragment();
             snakeLayer.innerHTML = '';
             const segColor = (window.__currentElColor || '#333');
+            // Kuki cookies make the body thicker: grow WIDER, not longer.
+            const bonus = window.__snakeWidthBonus || 0;
+            const size = SNAKE_SIZE + bonus;
+            const offset = -bonus / 2; // keep segments centered on their grid cell
             for (let i = 0; i < snake.length; i++) {
                 const seg = snake[i];
                 const px = document.createElement('div');
                 px.className = 'snake-pixel';
-                px.style.left = seg.x + 'px';
-                px.style.top = seg.y + 'px';
+                px.style.left = (seg.x + offset) + 'px';
+                px.style.top = (seg.y + offset) + 'px';
+                if (bonus > 0) {
+                    px.style.width = size + 'px';
+                    px.style.height = size + 'px';
+                }
                 // Use current elements color for all segments (head included)
                 px.style.background = segColor;
                 frag.appendChild(px);
@@ -3206,6 +3288,11 @@
                     if (container && container.parentNode) container.remove();
                 } catch { }
                 return true;
+            }
+
+            // Kuki cookie -> grow WIDER (or speed boost for the rare mochi), not longer
+            if (typeof handleKukiCookieHit === 'function' && handleKukiCookieHit(target)) {
+                return false; // no length growth; tail is removed as usual
             }
 
             if (target.tagName && target.tagName.toLowerCase() === 'img') {
@@ -3542,6 +3629,11 @@
                 return true;
             }
 
+            // Kuki cookie -> grow WIDER (or speed boost for the rare mochi), not longer
+            if (typeof handleKukiCookieHit === 'function' && handleKukiCookieHit(target)) {
+                return false; // no length growth; tail is removed as usual
+            }
+
             if (target.tagName && target.tagName.toLowerCase() === 'img') {
                 // Remove images on hit
                 try { target.remove(); } catch { }
@@ -3670,13 +3762,17 @@
             const snake2Layer = document.getElementById('snake2-layer');
             if (!snake2Layer) return;
             snake2Layer.innerHTML = '';
+            // Kuki cookies make the body thicker: grow WIDER, not longer.
+            const bonus = window.__snakeWidthBonus || 0;
+            const size = SNAKE_SIZE + bonus;
+            const offset = -bonus / 2;
             for (const part of snake2) {
                 const div = document.createElement('div');
                 div.style.position = 'absolute';
-                div.style.width = SNAKE_SIZE + 'px';
-                div.style.height = SNAKE_SIZE + 'px';
-                div.style.left = part.x + 'px';
-                div.style.top = part.y + 'px';
+                div.style.width = size + 'px';
+                div.style.height = size + 'px';
+                div.style.left = (part.x + offset) + 'px';
+                div.style.top = (part.y + offset) + 'px';
                 div.style.background = 'blue';
                 snake2Layer.appendChild(div);
             }
@@ -3687,6 +3783,11 @@
             snake2Dir = 'right';
             snake2Score = 0;
             if (snake2Timer) { clearInterval(snake2Timer); }
+            // Reset Kuki width/speed bonuses when no snake remains active
+            if (!snakeActive) {
+                window.__snakeWidthBonus = 0;
+                window.__snakeSpeedBoostUntil = 0;
+            }
             renderSnake2();
         }
 
@@ -3937,6 +4038,133 @@
             });
             return el;
         }
+
+        // ── Kuki: interactive word that spawns ONE cookie (galeta) image per
+        // interaction — mirrors the "newtro" word's spawn system exactly (click,
+        // right-click, mobile double-tap, and edge-triggered snake/pong impacts
+        // via the generic contextmenu-dispatch mechanism). Very rarely the
+        // special Mochikuk3 "kuki" bunny logo appears instead of a plain cookie.
+        //
+        // Cookies are native-resolution PNGs (assets/kuki/*.png). To recolor them
+        // to the current theme color we wrap the PNG in a tiny SVG <mask> (the
+        // artwork's alpha channel becomes the mask, painted with a solid <rect>),
+        // so the browser still rasterizes the original file at full quality.
+        window.KUKI_COOKIES = [
+            'assets/kuki/kuki1.png', 'assets/kuki/kuki2.png', 'assets/kuki/kuki3.png',
+            'assets/kuki/kuki4.png', 'assets/kuki/kuki5.png', 'assets/kuki/kuki6.png',
+            'assets/kuki/kuki7.png', 'assets/kuki/kuki8.png'
+        ];
+        window.KUKI_MOCHI = 'assets/kuki/mochikuk3.png';
+        window.KUKI_MOCHI_CHANCE = 0.08; // rare: ~1 in every 12 spawns
+
+        // Natural pixel size cache, keyed by source path (needed so the wrapping
+        // SVG declares a matching viewBox — otherwise the browser can't infer the
+        // image's aspect ratio from a data URI).
+        const __maskImgSizeCache = {};
+        function getImageNaturalSize(src) {
+            return new Promise((resolve) => {
+                if (__maskImgSizeCache[src]) { resolve(__maskImgSizeCache[src]); return; }
+                const probe = new Image();
+                probe.onload = () => {
+                    const size = { w: probe.naturalWidth || 512, h: probe.naturalHeight || 512 };
+                    __maskImgSizeCache[src] = size;
+                    resolve(size);
+                };
+                probe.onerror = () => resolve({ w: 512, h: 512 });
+                probe.src = src;
+            });
+        }
+
+        // Build a data-URI SVG that masks a native raster's alpha channel over a
+        // solid-color rect, so the artwork's linework renders in an arbitrary color.
+        function buildRecolorableSvgSrc(pngSrc, w, h, color) {
+            const abs = new URL(pngSrc, window.location.href).href;
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h +
+                '" viewBox="0 0 ' + w + ' ' + h + '">' +
+                '<mask id="m"><image width="' + w + '" height="' + h + '" href="' + abs + '"/></mask>' +
+                '<rect width="' + w + '" height="' + h + '" fill="' + color + '" mask="url(#m)"/></svg>';
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        }
+
+        // Re-applies the current theme color to every mask-recolored image on the
+        // canvas (kuki cookies, the about-cat logo, ...). Called from applyColors().
+        function recolorMaskedImages(color) {
+            document.querySelectorAll('#canvas img[data-mask-src]').forEach(img => {
+                const w = img.dataset.maskW, h = img.dataset.maskH;
+                if (!w || !h) return;
+                img.src = buildRecolorableSvgSrc(img.dataset.maskSrc, w, h, color);
+            });
+        }
+        window.recolorMaskedImages = recolorMaskedImages;
+
+        async function spawnRandomKukiCookie() {
+            const isMochi = Math.random() < window.KUKI_MOCHI_CHANCE;
+            const pngSrc = isMochi
+                ? window.KUKI_MOCHI
+                : window.KUKI_COOKIES[Math.floor(Math.random() * window.KUKI_COOKIES.length)];
+            const { w, h } = await getImageNaturalSize(pngSrc);
+            const color = window.__currentElColor || '#333333';
+            const img = document.createElement('img');
+            img.alt = '';
+            img.draggable = false;
+            img.className = isMochi ? 'kuki-cookie kuki-mochi' : 'kuki-cookie';
+            img.dataset.maskSrc = pngSrc;
+            img.dataset.maskW = w;
+            img.dataset.maskH = h;
+            img.src = buildRecolorableSvgSrc(pngSrc, w, h, color);
+            img.style.position = 'absolute';
+            if (window.__spawnFromSnake) {
+                const width = Math.floor(70 + Math.random() * 160); // 70..230px
+                img.style.width = width + 'px';
+                img.style.height = 'auto';
+                canvas.appendChild(img);
+                try { placeElementInSafeArea(img); } catch { }
+                img.dataset.userMoved = '1';
+            } else {
+                const vw = Math.floor(window.innerWidth / (window.zoomLevel || 1));
+                const vh = Math.floor(window.innerHeight / (window.zoomLevel || 1));
+                const width = Math.floor(80 + Math.random() * 140); // 80..220px
+                const margin = 60;
+                const left = Math.max(margin, Math.floor(Math.random() * (vw - width - margin * 2)));
+                const top = Math.max(margin, Math.floor(Math.random() * (vh - 160 - margin * 2)));
+                img.style.left = left + 'px';
+                img.style.top = top + 'px';
+                img.style.width = width + 'px';
+                img.style.height = 'auto';
+                canvas.appendChild(img);
+                img.dataset.userMoved = '1';
+            }
+            try { enhanceImage(img); } catch { }
+        }
+        window.spawnRandomKukiCookie = spawnRandomKukiCookie;
+
+        // Ensure KUKI word exists
+        function ensureKukiWord() {
+            let el = document.getElementById('kuki-word');
+            if (el) return el;
+            el = document.createElement('a');
+            el.id = 'kuki-word';
+            el.href = '#';
+            el.style.position = 'absolute';
+            el.style.fontSize = '24px';
+            el.style.letterSpacing = '2px';
+            el.style.color = '#333';
+            el.style.cursor = 'move';
+            el.style.userSelect = 'none';
+            canvas.appendChild(el);
+            try { placeElementInSafeArea(el); } catch { }
+            try { createWordSlotMachine(el, 'Kuki'); } catch { el.textContent = 'Kuki'; }
+            try { addWordDragEvents(el); } catch { }
+            el.addEventListener('click', (e) => { e.preventDefault(); spawnRandomKukiCookie(); });
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                spawnRandomKukiCookie();
+            });
+            try { addMobileDoubleTap(el, () => spawnRandomKukiCookie()); } catch { }
+            return el;
+        }
+        window.ensureKukiWord = ensureKukiWord;
 
         // Auto-placement next to reference image (same size as reference)
         let autoImageIndex = 0;
@@ -5642,6 +5870,21 @@ openStlViewer('content/ocu3D/TukTuk.stl');
 
             // No click action: image is decorative/draggable only
             aboutBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            // Recolor the cat logo to the current theme color (same mask technique
+            // used for the Kuki cookies), keeping full native-resolution quality.
+            (async () => {
+                try {
+                    const catImg = aboutBtn.querySelector('img');
+                    if (!catImg) return;
+                    const src = 'ocugat.png';
+                    const { w, h } = await getImageNaturalSize(src);
+                    catImg.dataset.maskSrc = src;
+                    catImg.dataset.maskW = w;
+                    catImg.dataset.maskH = h;
+                    catImg.src = buildRecolorableSvgSrc(src, w, h, window.__currentElColor || '#333333');
+                } catch { }
+            })();
         }
 
         // Initialize About button

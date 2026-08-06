@@ -1,23 +1,51 @@
-name: Deploy to Nominalia via Webhook
+name: Deploy to ocu.cat (FTP)
+
+# Secure deploy: syncs the site to the hosting over FTPS using GitHub Secrets.
+# Replaces the old public github_deploy.php webhook (arbitrary-upload / RCE risk).
+#
+# Required repository secrets (Settings ▸ Secrets and variables ▸ Actions):
+#   FTP_SERVER    e.g. ftp.ocu.cat   (Nominalia FTP host)
+#   FTP_USERNAME  your FTP user
+#   FTP_PASSWORD  your FTP password
+#   FTP_DIR       remote web root, e.g. ./www/   (trailing slash)
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   web-deploy:
-    name: 🎉 Deploy Webhook
+    name: 🚀 Deploy over FTPS
     runs-on: ubuntu-latest
     steps:
-    - name: 🚚 Get latest code
-      uses: actions/checkout@v4
-      
-    - name: 📦 Archive website
-      run: |
-        rm -rf .git .github Backup scripts py __pycache__ STL
-        zip -r web_ocu.zip .
-        
-    - name: 🚀 Deploy to ocu.cat
-      run: |
-        curl -X POST -F "f=@web_ocu.zip" "https://ocu.cat/github_deploy.php?token=${{ secrets.DEPLOY_TOKEN }}"
+      - name: 🚚 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📤 Sync to hosting
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          server-dir: ${{ secrets.FTP_DIR }}
+          # Dev-only files that must never reach the public server:
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/.DS_Store
+            Backup/**
+            scripts/**
+            py/**
+            **/__pycache__/**
+            *.stl
+            content/0Kares.stl
+            *.toe
+            *.zip
+            server.py
+            *.command
+            executar_web_ocu.sh
+            README.md

@@ -1,0 +1,230 @@
+.pdf-modal {
+    display: none;
+    position: absolute;
+    z-index: 100;
+    background: white !important;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
+    transform: scale(0.8);
+    opacity: 0;
+    cursor: move;
+    user-select: none;
+    overflow: hidden; /* clip inner content to rounded corners */
+    border-radius: 12px; /* rounded corners for the preview window */
+    width: 400px;
+    height: 500px;
+    min-width: 200px;
+    min-height: 250px;
+}
+
+.pdf-modal.show {
+    display: block;
+    transform: scale(1);
+    opacity: 1;
+}
+
+.pdf-modal-content {
+    position: relative;
+    background-color: white;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+}
+
+.pdf-close {
+    position: absolute;
+    top: 6px;
+    right: 6px; /* move to top-right */
+    left: auto;
+    color: #999; /* match controls color */
+    font-size: 16px;
+    font-weight: normal;
+    z-index: 110;
+    cursor: pointer;
+    width: 28px;   /* larger hit area */
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+    background-color: white;
+    border: 1px solid rgba(0,0,0,0.03); /* match controls border */
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    transition: all 0.2s ease;
+    font-family: 'Helvetica', sans-serif;
+}
+
+.pdf-close:hover,
+.pdf-close:focus {
+    background-color: white;
+    color: #999;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+#pdf-viewer {
+    width: 100%;
+    height: calc(100% - 65px);
+    overflow: hidden;
+}
+
+#pdf-container {
+    background-color: white !important;
+    background: white !important;
+    position: relative;
+    width: 100%;
+    height: calc(100% - 20px);
+    overflow: hidden;
+    margin-top: 20px;
+}
+
+.pdf-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background-color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    z-index: 105;
+    height: 45px;
+    box-sizing: border-box;
+}
+
+.pdf-controls button {
+    background-color: white;
+    color: #999;
+    border: 1px solid rgba(0,0,0,0.03);
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-family: 'Helvetica', sans-serif;
+    min-width: 30px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.pdf-controls button:hover {
+    background-color: white;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+.pdf-page-info {
+    color: #999;
+    font-family: 'Helvetica', sans-serif;
+    margin: 0 8px;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+#pdf-object, #pdf-embed {
+    border: none;
+    border-radius: 8px 8px 0 0;
+    background-color: white;
+    display: block;
+}
+
+#pdf-object {
+    background: white;
+}
+
+#pdf-embed {
+    background: white;
+}
+
+/* Invisible resize handles for all 4 corners */
+.pdf-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 15px;
+    height: 15px;
+    cursor: nw-resize;
+    z-index: 120;
+}
+
+.pdf-modal::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    cursor: se-resize;
+    z-index: 120;
+}
+
+/* Additional resize handles created via child elements */
+.pdf-modal .resize-handle-ne {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    cursor: ne-resize;
+    z-index: 120;
+}
+
+.pdf-modal .resize-handle-sw {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 15px;
+    height: 15px;
+    cursor: sw-resize;
+    z-index: 120;
+}
+
+/* Minimal header for dragging */
+.pdf-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: white;
+    cursor: move;
+    z-index: 115;
+}
+
+/* Ensure PDF elements visually match rounded corners */
+#pdf-object, #pdf-embed, #pdf-container object, #pdf-container embed {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 0; /* clipped by modal's overflow hidden */
+}
+
+@media (max-width: 768px) {
+    .pdf-modal {
+        width: 95vw !important;
+        height: 95vh !important;
+        min-width: 95vw !important;
+        min-height: 95vh !important;
+        resize: none;
+    }
+    
+    .pdf-controls {
+        padding: 5px;
+        gap: 5px;
+    }
+    
+    .pdf-controls button {
+        padding: 3px 8px;
+        font-size: 14px;
+    }
+}
+
+/* Image blend removed: keep images clean with no visual frame */

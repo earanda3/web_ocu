@@ -1134,3 +1134,93 @@ window.ensure3dWord = function () {
     });
     return el;
 }
+
+// ── Kuki: interactive word that spawns cookie (galeta) images ──────────────
+// The cookies are recolorable SVG silhouettes (assets/kuki/*.svg). The snake
+// grows WIDER (not longer) when it eats a normal cookie, and eating the rare
+// "mochi" cookie boosts the snake speed x10 for a few seconds (see snake.js).
+window.KUKI_COOKIES = [
+    'assets/kuki/kuki1.svg', 'assets/kuki/kuki2.svg', 'assets/kuki/kuki3.svg',
+    'assets/kuki/kuki4.svg', 'assets/kuki/kuki5.svg', 'assets/kuki/kuki6.svg',
+    'assets/kuki/kuki7.svg', 'assets/kuki/kuki8.svg', 'assets/kuki/kuki9.svg'
+];
+window.KUKI_MOCHI = 'assets/kuki/mochikuk3.svg';
+
+function makeKukiCookie(src, isMochi) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.className = isMochi ? 'kuki-cookie kuki-mochi' : 'kuki-cookie';
+    img.draggable = false;
+    img.dataset.kuki = '1';
+    if (isMochi) img.dataset.mochi = '1';
+    img.style.position = 'absolute';
+    img.style.cursor = 'move';
+    img.style.userSelect = 'none';
+    // Keep aspect ratio: set a target size, height auto
+    const size = isMochi ? 90 : (60 + Math.floor(Math.random() * 70));
+    img.style.width = size + 'px';
+    img.style.height = 'auto';
+    return img;
+}
+
+function spawnKukiCookies(count) {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const n = count || (4 + Math.floor(Math.random() * 4)); // 4-7 cookies
+    const vw = window.innerWidth / (window.zoomLevel || 1);
+    const vh = window.innerHeight / (window.zoomLevel || 1);
+    for (let i = 0; i < n; i++) {
+        const src = window.KUKI_COOKIES[Math.floor(Math.random() * window.KUKI_COOKIES.length)];
+        const img = makeKukiCookie(src, false);
+        const x = Math.round((-window.panX) + Math.random() * Math.max(0, vw - 120));
+        const y = Math.round((-window.panY) + Math.random() * Math.max(0, vh - 120));
+        img.style.left = x + 'px';
+        img.style.top = y + 'px';
+        canvas.appendChild(img);
+        try { addWordDragEvents(img); } catch { }
+    }
+    // Rare: spawn the special Mochikuk3 cookie (~15% of spawns)
+    if (Math.random() < 0.15) {
+        const mochi = makeKukiCookie(window.KUKI_MOCHI, true);
+        const x = Math.round((-window.panX) + Math.random() * Math.max(0, vw - 120));
+        const y = Math.round((-window.panY) + Math.random() * Math.max(0, vh - 120));
+        mochi.style.left = x + 'px';
+        mochi.style.top = y + 'px';
+        canvas.appendChild(mochi);
+        try { addWordDragEvents(mochi); } catch { }
+    }
+    // Recolor freshly spawned cookies to the current theme color
+    try {
+        if (typeof applyColors === 'function') {
+            applyColors(window.__currentBgColor || '#ffffff', window.__currentElColor || '#333333');
+        }
+    } catch { }
+}
+window.spawnKukiCookies = spawnKukiCookies;
+
+window.ensureKukiWord = function () {
+    let el = document.getElementById('kuki-word');
+    if (el) return el;
+    el = document.createElement('a');
+    el.id = 'kuki-word';
+    el.href = '#';
+    el.style.position = 'absolute';
+    el.style.fontSize = '24px';
+    el.style.letterSpacing = '2px';
+    el.style.color = '#333';
+    el.style.cursor = 'move';
+    el.style.userSelect = 'none';
+    const canvas = getCanvas();
+    if (!canvas) return el;
+    canvas.appendChild(el);
+    try { placeElementInSafeArea(el); } catch { }
+    try { createWordSlotMachine(el, 'Kuki'); } catch { el.textContent = 'Kuki'; }
+    try { addWordDragEvents(el); } catch { }
+
+    // Right-click spawns a batch of cookies on the canvas
+    el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        spawnKukiCookies();
+    });
+    return el;
+}

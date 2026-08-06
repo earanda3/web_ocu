@@ -13,11 +13,77 @@ const SNAKE_SIZE = 10;
 const SNAKE_BASE_MS = 85;
 const SNAKE_MIN_MS = 30;
 
+// Kuki cookies make the snake grow WIDER (thicker) instead of longer.
+window.__snakeWidthBonus = window.__snakeWidthBonus || 0;
+const KUKI_WIDTH_STEP = 6;   // px added to segment thickness per cookie eaten
+const KUKI_WIDTH_MAX = 60;   // cap so it stays playable
+
+// Rare Mochikuk3 cookie boosts speed x10 for a few seconds.
+window.__snakeSpeedBoostUntil = window.__snakeSpeedBoostUntil || 0;
+const KUKI_BOOST_FACTOR = 10;
+const KUKI_BOOST_MS = 5000;
+
 function getSnakeSpeed() {
     // Speed up as length grows (or score grows). Start with base, subtract a bit per 3 segments.
     const grow = Math.max(0, snake.length - 4);
     const step = Math.floor(grow / 3);
-    return Math.max(SNAKE_MIN_MS, SNAKE_BASE_MS - step * 5);
+    let ms = Math.max(SNAKE_MIN_MS, SNAKE_BASE_MS - step * 5);
+    // Temporary x10 boost from eating the Mochikuk3 cookie
+    if (Date.now() < (window.__snakeSpeedBoostUntil || 0)) {
+        ms = Math.max(3, Math.round(ms / KUKI_BOOST_FACTOR));
+    }
+    return ms;
+}
+
+// Trigger a temporary snake speed boost (x10) for the given duration.
+function triggerSnakeSpeedBoost(ms) {
+    const dur = ms || KUKI_BOOST_MS;
+    window.__snakeSpeedBoostUntil = Date.now() + dur;
+    // Restart timers immediately at the boosted speed
+    try {
+        if (snakeActive && typeof moveSnakeTick === 'function') {
+            if (snakeTimer) clearInterval(snakeTimer);
+            snakeTimer = setInterval(moveSnakeTick, getSnakeSpeed());
+        }
+    } catch { }
+    try {
+        if (typeof snake2Active !== 'undefined' && snake2Active && typeof moveSnake2Tick === 'function') {
+            if (typeof snake2Timer !== 'undefined' && snake2Timer) clearInterval(snake2Timer);
+            snake2Timer = setInterval(moveSnake2Tick, getSnakeSpeed());
+        }
+    } catch { }
+    // Restore normal speed when the boost expires
+    setTimeout(() => {
+        try {
+            if (snakeActive) {
+                if (snakeTimer) clearInterval(snakeTimer);
+                snakeTimer = setInterval(moveSnakeTick, getSnakeSpeed());
+            }
+        } catch { }
+        try {
+            if (typeof snake2Active !== 'undefined' && snake2Active) {
+                if (typeof snake2Timer !== 'undefined' && snake2Timer) clearInterval(snake2Timer);
+                snake2Timer = setInterval(moveSnake2Tick, getSnakeSpeed());
+            }
+        } catch { }
+    }, dur + 20);
+}
+window.triggerSnakeSpeedBoost = triggerSnakeSpeedBoost;
+
+// Handle the snake eating a Kuki cookie: grow WIDER, not longer.
+// Returns true if the target was a cookie (so caller can stop further handling).
+function handleKukiCookieHit(target) {
+    if (!target || !target.classList || !target.classList.contains('kuki-cookie')) return false;
+    const isMochi = target.classList.contains('kuki-mochi') || (target.dataset && target.dataset.mochi === '1');
+    try { target.remove(); } catch { }
+    if (isMochi) {
+        // Rare cookie -> speed x10 boost for a few seconds
+        try { triggerSnakeSpeedBoost(KUKI_BOOST_MS); } catch { }
+    } else {
+        // Normal cookie -> get thicker (wider), not longer
+        window.__snakeWidthBonus = Math.min(KUKI_WIDTH_MAX, (window.__snakeWidthBonus || 0) + KUKI_WIDTH_STEP);
+    }
+    return true;
 }
 
 // HUD helpers
@@ -143,6 +209,11 @@ function destroySnake() {
     if (snakeLayer) snakeLayer.innerHTML = '';
     if (snakeTimer) { clearInterval(snakeTimer); snakeTimer = null; }
     if (snakeTimeTimer) { clearInterval(snakeTimeTimer); snakeTimeTimer = null; }
+    // Reset Kuki width/speed bonuses when no snake remains active
+    if (typeof snake2Active === 'undefined' || !snake2Active) {
+        window.__snakeWidthBonus = 0;
+        window.__snakeSpeedBoostUntil = 0;
+    }
 
     // Clean up pixel mode goal
     try {
@@ -199,12 +270,20 @@ function renderSnake() {
     const frag = document.createDocumentFragment();
     snakeLayer.innerHTML = '';
     const segColor = (window.__currentElColor || '#333');
+    // Kuki cookies make the body thicker: grow WIDER, not longer.
+    const bonus = window.__snakeWidthBonus || 0;
+    const size = SNAKE_SIZE + bonus;
+    const offset = -bonus / 2; // keep segments centered on their grid cell
     for (let i = 0; i < snake.length; i++) {
         const seg = snake[i];
         const px = document.createElement('div');
         px.className = 'snake-pixel';
-        px.style.left = seg.x + 'px';
-        px.style.top = seg.y + 'px';
+        px.style.left = (seg.x + offset) + 'px';
+        px.style.top = (seg.y + offset) + 'px';
+        if (bonus > 0) {
+            px.style.width = size + 'px';
+            px.style.height = size + 'px';
+        }
         // Use current elements color for all segments (head included)
         px.style.background = segColor;
         frag.appendChild(px);
@@ -404,6 +483,11 @@ function handleSnakeCollision(x, y) {
             if (container && container.parentNode) container.remove();
         } catch { }
         return true;
+    }
+
+    // Kuki cookie -> grow WIDER (or speed boost for the rare mochi), not longer
+    if (typeof handleKukiCookieHit === 'function' && handleKukiCookieHit(target)) {
+        return false; // no length growth; tail is removed as usual
     }
 
     if (target.tagName && target.tagName.toLowerCase() === 'img') {
@@ -704,6 +788,11 @@ function handleSnake2Collision(x, y) {
         return true;
     }
 
+    // Kuki cookie -> grow WIDER (or speed boost for the rare mochi), not longer
+    if (typeof handleKukiCookieHit === 'function' && handleKukiCookieHit(target)) {
+        return false; // no length growth; tail is removed as usual
+    }
+
     if (target.tagName && target.tagName.toLowerCase() === 'img') {
         // Remove images on hit
         try { target.remove(); } catch { }
@@ -805,13 +894,17 @@ function renderSnake2() {
     const snake2Layer = document.getElementById('snake2-layer');
     if (!snake2Layer) return;
     snake2Layer.innerHTML = '';
+    // Kuki cookies make the body thicker: grow WIDER, not longer.
+    const bonus = window.__snakeWidthBonus || 0;
+    const size = SNAKE_SIZE + bonus;
+    const offset = -bonus / 2;
     for (const part of snake2) {
         const div = document.createElement('div');
         div.style.position = 'absolute';
-        div.style.width = SNAKE_SIZE + 'px';
-        div.style.height = SNAKE_SIZE + 'px';
-        div.style.left = part.x + 'px';
-        div.style.top = part.y + 'px';
+        div.style.width = size + 'px';
+        div.style.height = size + 'px';
+        div.style.left = (part.x + offset) + 'px';
+        div.style.top = (part.y + offset) + 'px';
         div.style.background = 'blue';
         snake2Layer.appendChild(div);
     }
@@ -822,6 +915,11 @@ function destroySnake2() {
     snake2Dir = 'right';
     snake2Score = 0;
     if (snake2Timer) { clearInterval(snake2Timer); }
+    // Reset Kuki width/speed bonuses when no snake remains active
+    if (!snakeActive) {
+        window.__snakeWidthBonus = 0;
+        window.__snakeSpeedBoostUntil = 0;
+    }
     renderSnake2();
 }
 
