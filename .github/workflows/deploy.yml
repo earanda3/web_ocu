@@ -49,6 +49,25 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_DIR: ${{ secrets.FTP_DIR }}
 
+      - name: 🗺️ Diagnose remote directory layout (read-only, no uploads)
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -c "
+          set ftp:ssl-allow no;
+          set net:max-retries 3;
+          set net:timeout 15;
+          open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\";
+          echo '--- pwd on login ---';
+          pwd;
+          echo '--- ls -la at login dir ---';
+          ls -la;
+          echo '--- ls -la one level down (if any dirs exist) ---';
+          !true;
+          "
+
       - name: 📤 Sync to hosting
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
