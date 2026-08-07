@@ -64,8 +64,14 @@ jobs:
           pwd;
           echo '--- ls -la at login dir ---';
           ls -la;
-          echo '--- ls -la one level down (if any dirs exist) ---';
-          !true;
+          echo '--- ls -la inside www/ (suspected real doc root) ---';
+          cls -la www/ 2>&1 || echo 'could not list www/';
+          echo '--- does www/github_deploy.php exist? (would confirm www/ is the real web root) ---';
+          ls www/github_deploy.php 2>&1 || echo 'not found';
+          echo '--- does www/diag5.php exist? ---';
+          ls www/diag5.php 2>&1 || echo 'not found';
+          echo '--- www/index.html size ---';
+          ls www/index.html 2>&1 || echo 'not found';
           "
 
       - name: 📤 Sync to hosting
