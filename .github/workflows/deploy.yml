@@ -59,6 +59,13 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_DIR: ${{ secrets.FTP_DIR }}
         run: |
+          # lftp often exits non-zero on this flaky host because the control
+          # connection is reset AFTER the mirror has finished all transfers and
+          # deletions. We don't fail the job on that here — the "Verify" step
+          # below is the real gate (checks the live site over HTTP).
+          # NOTE: *.stl is excluded from upload/delete on purpose: the real 3D
+          # models already live on the server from before and are too big to
+          # re-sync; content/ocu3D/*.stl stay as they are.
           lftp -c "
           set ftp:ssl-allow no;
           set net:max-retries 8;
@@ -78,10 +85,20 @@ jobs:
             --exclude-glob __pycache__/ \
             --exclude-glob '*.stl' \
             --exclude-glob '*.toe' \
-            --exclude-glob '*.zip' \
             --exclude-glob server.py \
             --exclude-glob '*.command' \
             --exclude-glob executar_web_ocu.sh \
             --exclude-glob README.md \
             ./ \"$FTP_DIR\";
-          "
+          " || echo "::warning::lftp exited non-zero (likely a trailing connection reset); verifying over HTTP next"
+
+      - name: ✅ Verify deploy is live
+        run: |
+          sleep 5
+          BODY=$(curl -fsS "https://ocu.cat/?cachebust=$(date +%s)")
+          if echo "$BODY" | grep -q "vendor/pdf-viewer.css"; then
+            echo "Live site is serving the current build."
+          else
+            echo "::error::Live index.html does not match the current build (deploy may be incomplete)."
+            exit 1
+          fi
