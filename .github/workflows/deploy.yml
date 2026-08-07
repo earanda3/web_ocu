@@ -9,6 +9,10 @@ name: Deploy to ocu.cat (FTP)
 # Plain FTP is what's available; the credentials being in GitHub Secrets (not
 # in the repo) is still the important security fix here.
 #
+# Uses lftp (not a JS FTP client) because this host's data-connections reset
+# intermittently under GitHub Actions' cloud IPs. lftp retries transient FTP
+# errors automatically instead of failing the whole deploy on one hiccup.
+#
 # Required repository secrets (Settings ▸ Secrets and variables ▸ Actions):
 #   FTP_SERVER    ocucat.ftp.tb-hosting.com
 #   FTP_USERNAME  your FTP user
@@ -24,35 +28,45 @@ on:
 
 jobs:
   web-deploy:
-    name: 🚀 Deploy over FTPS
+    name: 🚀 Deploy over FTP
     runs-on: ubuntu-latest
     steps:
       - name: 🚚 Checkout
         uses: actions/checkout@v4
 
+      - name: 📦 Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -qq -y lftp
+
       - name: 📤 Sync to hosting
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          server-dir: ${{ secrets.FTP_DIR }}
-          # Dev-only files that must never reach the public server:
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            **/.DS_Store
-            Backup/**
-            scripts/**
-            py/**
-            **/__pycache__/**
-            *.stl
-            content/0Kares.stl
-            *.toe
-            *.zip
-            server.py
-            *.command
-            executar_web_ocu.sh
-            README.md
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.FTP_DIR }}
+        run: |
+          lftp -c "
+          set ftp:ssl-allow no;
+          set net:max-retries 8;
+          set net:timeout 20;
+          set net:reconnect-interval-base 5;
+          set net:reconnect-interval-multiplier 1;
+          set net:persist-retries 8;
+          set mirror:parallel-transfer-count 1;
+          open -u \"\$FTP_USERNAME\",\"\$FTP_PASSWORD\" \"\$FTP_SERVER\";
+          mirror --reverse --verbose --only-newer --no-perms --parallel=1 \
+            --exclude-glob .git/ \
+            --exclude-glob .github/ \
+            --exclude-glob .DS_Store \
+            --exclude-glob Backup/ \
+            --exclude-glob scripts/ \
+            --exclude-glob py/ \
+            --exclude-glob __pycache__/ \
+            --exclude-glob '*.stl' \
+            --exclude-glob '*.toe' \
+            --exclude-glob '*.zip' \
+            --exclude-glob server.py \
+            --exclude-glob '*.command' \
+            --exclude-glob executar_web_ocu.sh \
+            --exclude-glob README.md \
+            ./ \"\$FTP_DIR\";
+          "
