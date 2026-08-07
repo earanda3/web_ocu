@@ -42,7 +42,7 @@ jobs:
       - name: 📦 Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -qq -y lftp
 
-      - name: 🛡️ Guard: refuse to deploy if FTP_DIR is unset (protects --delete below)
+      - name: "🛡️ Guard: refuse to deploy if FTP_DIR is unset (protects --delete below)"
         run: |
           if [ -z "$FTP_DIR" ]; then
             echo "::error::FTP_DIR secret is empty. Refusing to run --delete mirror against an unknown directory."
