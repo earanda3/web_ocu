@@ -1,13 +1,20 @@
 name: Deploy to ocu.cat (FTP)
 
-# Secure deploy: syncs the site to the hosting over FTPS using GitHub Secrets.
-# Replaces the old public github_deploy.php webhook (arbitrary-upload / RCE risk).
+# Deploy: syncs the site to the hosting over FTP using GitHub Secrets (credentials
+# never appear in the repo). Replaces the old public github_deploy.php webhook
+# (arbitrary-upload / RCE risk, flagged as malware by the hosting provider).
+#
+# NOTE: this hosting's FTP server (ocucat.ftp.tb-hosting.com, ProFTPD) does not
+# support FTPS (no AUTH TLS, no port 990) — confirmed by probing it directly.
+# Plain FTP is what's available; the credentials being in GitHub Secrets (not
+# in the repo) is still the important security fix here.
 #
 # Required repository secrets (Settings ▸ Secrets and variables ▸ Actions):
-#   FTP_SERVER    e.g. ftp.ocu.cat   (Nominalia FTP host)
+#   FTP_SERVER    ocucat.ftp.tb-hosting.com
 #   FTP_USERNAME  your FTP user
 #   FTP_PASSWORD  your FTP password
-#   FTP_DIR       remote web root, e.g. ./www/   (trailing slash)
+#   FTP_DIR       remote web root, e.g. ./www/   (trailing slash — confirm the
+#                 exact path once logged into the FTP account)
 
 on:
   push:
@@ -29,7 +36,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
+          protocol: ftp
           server-dir: ${{ secrets.FTP_DIR }}
           # Dev-only files that must never reach the public server:
           exclude: |
