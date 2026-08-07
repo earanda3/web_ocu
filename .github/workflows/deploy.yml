@@ -37,6 +37,18 @@ jobs:
       - name: 📦 Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -qq -y lftp
 
+      - name: 🔎 Check secrets are set (lengths only, never the values)
+        run: |
+          echo "FTP_SERVER length:   ${#FTP_SERVER}"
+          echo "FTP_USERNAME length: ${#FTP_USERNAME}"
+          echo "FTP_PASSWORD length: ${#FTP_PASSWORD}"
+          echo "FTP_DIR length:      ${#FTP_DIR}"
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_DIR: ${{ secrets.FTP_DIR }}
+
       - name: 📤 Sync to hosting
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -52,7 +64,7 @@ jobs:
           set net:reconnect-interval-multiplier 1;
           set net:persist-retries 8;
           set mirror:parallel-transfer-count 1;
-          open -u \"\$FTP_USERNAME\",\"\$FTP_PASSWORD\" \"\$FTP_SERVER\";
+          open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\";
           mirror --reverse --verbose --only-newer --no-perms --parallel=1 \
             --exclude-glob .git/ \
             --exclude-glob .github/ \
@@ -68,5 +80,5 @@ jobs:
             --exclude-glob '*.command' \
             --exclude-glob executar_web_ocu.sh \
             --exclude-glob README.md \
-            ./ \"\$FTP_DIR\";
+            ./ \"$FTP_DIR\";
           "
