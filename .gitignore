@@ -56,3 +56,6 @@ update.zip
 index_backup.html
 Backup/
 testdir/
+
+# 3D model SOURCES: keep locally, ship the Draco .glb instead (scripts/stl_to_glb.py)
+content/**/*.stl

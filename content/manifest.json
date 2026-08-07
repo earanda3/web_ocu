@@ -71,18 +71,19 @@
     ],
     "files": {
       "stl": [
-        "Anell2.stl",
-        "Arzak2.stl",
-        "Ocu3D2.stl",
-        "TukTuk.stl",
-        "ocu3D10.stl",
-        "ocu3D13.stl",
-        "ocu3D16.stl",
-        "ocu3D4.stl",
-        "ocu3D5.stl",
-        "ocu3D6.stl",
-        "shapr3d_export_2026-04-01_01h36m.stl",
-        "shapr3d_export_2026-04-01_01h37m.stl"
+        "Anell2.glb",
+        "Arzak2.glb",
+        "Ocu3D2.glb",
+        "Teclaedu.glb",
+        "TukTuk.glb",
+        "ocu3D10.glb",
+        "ocu3D13.glb",
+        "ocu3D16.glb",
+        "ocu3D4.glb",
+        "ocu3D5.glb",
+        "ocu3D6.glb",
+        "shapr3d_export_2026-04-01_01h36m.glb",
+        "shapr3d_export_2026-04-01_01h37m.glb"
       ],
       "pdf": [],
       "image": []

@@ -4591,7 +4591,7 @@
             });
             teclaLinkEl.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                if (typeof openStlViewer === 'function') openStlViewer('content/ocu3D/Teclaedu.stl');
+                if (typeof openStlViewer === 'function') openStlViewer('content/ocu3D/Teclaedu.glb');
             });
         }
 
@@ -5180,14 +5180,14 @@ addWordDragEvents(teclaWord);
 teclaWord.addEventListener('contextmenu', (e) => {
 e.preventDefault();
 if (typeof openStlViewer === 'function') {
-openStlViewer('content/ocu3D/Teclaedu.stl');
+openStlViewer('content/ocu3D/Teclaedu.glb');
 }
 });
 
 // Mobile: double-tap opens STL viewer
 addMobileDoubleTap(teclaWord, () => {
 if (typeof openStlViewer === 'function') {
-openStlViewer('content/ocu3D/Teclaedu.stl');
+openStlViewer('content/ocu3D/Teclaedu.glb');
 }
 });
 }
@@ -5212,7 +5212,7 @@ addWordDragEvents(tukTukWord);
 tukTukWord.addEventListener('contextmenu', (e) => {
 e.preventDefault();
 if (typeof openStlViewer === 'function') {
-openStlViewer('content/ocu3D/TukTuk.stl');
+openStlViewer('content/ocu3D/TukTuk.glb');
 }
 });
                 try { if (hazardPatternTimer) { clearInterval(hazardPatternTimer); hazardPatternTimer = null; } } catch { }
@@ -5307,14 +5307,14 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             teclaWord.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 if (typeof openStlViewer === 'function') {
-                    openStlViewer('content/ocu3D/Teclaedu.stl');
+                    openStlViewer('content/ocu3D/Teclaedu.glb');
                 }
             });
 
             // Mobile: double-tap opens STL viewer
             addMobileDoubleTap(teclaWord, () => {
                 if (typeof openStlViewer === 'function') {
-                    openStlViewer('content/ocu3D/Teclaedu.stl');
+                    openStlViewer('content/ocu3D/Teclaedu.glb');
                 }
             });
         }
@@ -5340,14 +5340,14 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             tukTukWord.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
                 if (typeof openStlViewer === 'function') {
-                    openStlViewer('content/ocu3D/TukTuk.stl');
+                    openStlViewer('content/ocu3D/TukTuk.glb');
                 }
             });
 
             // Mobile: double-tap opens STL viewer
             addMobileDoubleTap(tukTukWord, () => {
                 if (typeof openStlViewer === 'function') {
-                    openStlViewer('content/ocu3D/TukTuk.stl');
+                    openStlViewer('content/ocu3D/TukTuk.glb');
                 }
             });
         }

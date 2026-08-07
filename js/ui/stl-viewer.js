@@ -2,19 +2,30 @@
 if (!window.stlViewers) window.stlViewers = [];
 const stlViewers = window.stlViewers;
 
-// Lazy-load three.js (r128) only when a 3D model is actually opened, so the
-// ~600KB library is never downloaded on visits that never use the STL viewer.
-function ensureThree() {
-    if (window.THREE) return Promise.resolve();
-    if (window.__threeLoadingPromise) return window.__threeLoadingPromise;
-    window.__threeLoadingPromise = new Promise((resolve, reject) => {
+// Lazy-load three.js (r128) + the glTF/Draco loaders only when a 3D model is
+// actually opened, so nothing is downloaded on visits that never use the viewer.
+// The library models are Draco-compressed .glb (see scripts/stl_to_glb.py);
+// plain .stl is still supported for user-uploaded files.
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        s.src = src;
         s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Failed to load three.js'));
+        s.onerror = () => reject(new Error('Failed to load ' + src));
         document.head.appendChild(s);
     });
-    return window.__threeLoadingPromise;
+}
+
+function ensureThree() {
+    if (window.__threeStackPromise) return window.__threeStackPromise;
+    const base = window.THREE
+        ? Promise.resolve()
+        : loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js');
+    window.__threeStackPromise = base.then(() => Promise.all([
+        window.THREE.GLTFLoader ? null : loadScript('vendor/three/GLTFLoader.js'),
+        window.THREE.DRACOLoader ? null : loadScript('vendor/three/DRACOLoader.js'),
+    ]));
+    return window.__threeStackPromise;
 }
 
 function initStlViewer() {
@@ -862,15 +873,39 @@ function createOrbitControls(camera, domElement) {
     return controls;
 }
 
-function loadSTLFile(viewer, filePath) {
-
-    fetch(filePath)
+// Returns a Promise<THREE.BufferGeometry> for either a Draco .glb (library
+// models, tiny) or a raw .stl (user uploads). Normals are (re)computed by the
+// caller, so the .glb path only needs positions + indices.
+function loadGeometry(filePath) {
+    if (/\.glb$/i.test(filePath)) {
+        return new Promise((resolve, reject) => {
+            const draco = new THREE.DRACOLoader();
+            draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+            const loader = new THREE.GLTFLoader();
+            loader.setDRACOLoader(draco);
+            loader.load(filePath, (gltf) => {
+                let src = null;
+                gltf.scene.traverse((o) => { if (o.isMesh && !src) src = o.geometry; });
+                if (!src) { reject(new Error('No mesh found in ' + filePath)); return; }
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', src.attributes.position);
+                if (src.index) geometry.setIndex(src.index);
+                resolve(geometry);
+            }, undefined, reject);
+        });
+    }
+    return fetch(filePath)
         .then(response => {
-            if (!response.ok) throw new Error('STL file not found');
+            if (!response.ok) throw new Error('Model file not found');
             return response.arrayBuffer();
         })
-        .then(arrayBuffer => {
-            const geometry = parseSTL(arrayBuffer);
+        .then(arrayBuffer => parseSTL(arrayBuffer));
+}
+
+function loadSTLFile(viewer, filePath) {
+
+    loadGeometry(filePath)
+        .then(geometry => {
             geometry.computeVertexNormals();
             geometry.center();
 

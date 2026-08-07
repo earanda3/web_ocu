@@ -20,7 +20,10 @@ CONTENT_DIR = os.path.join(os.path.dirname(__file__), '..', 'content')
 MANIFEST_PATH = os.path.join(CONTENT_DIR, 'manifest.json')
 
 IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif'}
-STL_EXTS   = {'.stl'}
+# 3D models are served as Draco-compressed glTF (.glb); the raw .stl sources are
+# kept in the repo but not listed here (convert new ones with scripts/stl_to_glb.py).
+# The manifest category is still called "stl" (that's the key the viewer reads).
+STL_EXTS   = {'.glb'}
 PDF_EXTS   = {'.pdf'}
 SKIP_FILES = {'.ds_store', '.gitkeep', '.gitignore', 'manifest.json'}
 
