@@ -52,6 +52,9 @@ jobs:
         env:
           FTP_DIR: ${{ secrets.FTP_DIR }}
 
+      - name: 🗜️ Build (minify JS/CSS + cache-bust, in place before upload)
+        run: bash scripts/build_minify.sh "${GITHUB_SHA::8}"
+
       - name: 📤 Sync to hosting (mirrors repo, deletes stale remote files)
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
