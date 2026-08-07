@@ -7148,7 +7148,7 @@ openStlViewer('content/ocu3D/TukTuk.stl');
             document.removeEventListener('touchend', stopTouchDrag);
         }
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- three.js is lazy-loaded on demand by stl-viewer.js (only when an STL opens). -->
     <script src="js/ui/stl-viewer.js"></script>
     <script src="js/ui/info-viewer.js"></script>
     <script src="js/ui/tecla-viewer.js"></script>

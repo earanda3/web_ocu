@@ -2,11 +2,26 @@
 if (!window.stlViewers) window.stlViewers = [];
 const stlViewers = window.stlViewers;
 
+// Lazy-load three.js (r128) only when a 3D model is actually opened, so the
+// ~600KB library is never downloaded on visits that never use the STL viewer.
+function ensureThree() {
+    if (window.THREE) return Promise.resolve();
+    if (window.__threeLoadingPromise) return window.__threeLoadingPromise;
+    window.__threeLoadingPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load three.js'));
+        document.head.appendChild(s);
+    });
+    return window.__threeLoadingPromise;
+}
+
 function initStlViewer() {
     // No modal initialization needed - viewers are created on demand
 }
 
-function openStlViewer(filePath) {
+function openStlViewerImpl(filePath) {
     console.log('openStlViewer called with:', filePath);
     const canvas = window.canvas || document.getElementById('canvas');
     if (!canvas) {
@@ -989,6 +1004,14 @@ function cleanupThreeJS(viewer) {
 
     viewer.camera = null;
     viewer.controls = null
+}
+
+// Public entry point: make sure three.js is loaded, then open the viewer.
+// Callers (index.html) invoke this fire-and-forget; the async load is transparent.
+function openStlViewer(filePath) {
+    ensureThree()
+        .then(() => openStlViewerImpl(filePath))
+        .catch(err => console.error('STL viewer: could not load three.js —', err));
 }
 
 window.openStlViewer = openStlViewer;
