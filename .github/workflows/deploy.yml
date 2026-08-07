@@ -13,12 +13,17 @@ name: Deploy to ocu.cat (FTP)
 # intermittently under GitHub Actions' cloud IPs. lftp retries transient FTP
 # errors automatically instead of failing the whole deploy on one hiccup.
 #
+# --delete is intentional: the live "www/" doc root still has the old
+# github_deploy.php / diag*.php / lib/ / *.zip files from the previous
+# insecure deploy method, and this is how they finally get removed from
+# the server. The FTP_DIR guard below exists specifically so this never
+# runs with an empty target (which would point --delete at the wrong dir).
+#
 # Required repository secrets (Settings ▸ Secrets and variables ▸ Actions):
 #   FTP_SERVER    ocucat.ftp.tb-hosting.com
 #   FTP_USERNAME  your FTP user
 #   FTP_PASSWORD  your FTP password
-#   FTP_DIR       remote web root, e.g. ./www/   (trailing slash — confirm the
-#                 exact path once logged into the FTP account)
+#   FTP_DIR       www   (the account's real web document root)
 
 on:
   push:
@@ -37,42 +42,17 @@ jobs:
       - name: 📦 Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -qq -y lftp
 
-      - name: 🔎 Check secrets are set (lengths only, never the values)
+      - name: 🛡️ Guard: refuse to deploy if FTP_DIR is unset (protects --delete below)
         run: |
-          echo "FTP_SERVER length:   ${#FTP_SERVER}"
-          echo "FTP_USERNAME length: ${#FTP_USERNAME}"
-          echo "FTP_PASSWORD length: ${#FTP_PASSWORD}"
-          echo "FTP_DIR length:      ${#FTP_DIR}"
+          if [ -z "$FTP_DIR" ]; then
+            echo "::error::FTP_DIR secret is empty. Refusing to run --delete mirror against an unknown directory."
+            exit 1
+          fi
+          echo "FTP_DIR is set (length ${#FTP_DIR})."
         env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_DIR: ${{ secrets.FTP_DIR }}
 
-      - name: 🗺️ Diagnose remote directory layout (read-only, no uploads)
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          lftp -c "
-          set ftp:ssl-allow no;
-          set net:max-retries 3;
-          set net:timeout 15;
-          open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\";
-          echo '--- pwd on login ---';
-          pwd;
-          echo '--- ls -la at login dir ---';
-          ls -la;
-          echo '--- ls -la inside www/ (suspected real doc root) ---';
-          cls -la www;
-          echo '--- www/index.html (would confirm www/ is the real web root) ---';
-          ls -la www/index.html;
-          echo '--- www/github_deploy.php ---';
-          ls -la www/github_deploy.php;
-          "
-
-      - name: 📤 Sync to hosting
+      - name: 📤 Sync to hosting (mirrors repo, deletes stale remote files)
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
@@ -88,7 +68,7 @@ jobs:
           set net:persist-retries 8;
           set mirror:parallel-transfer-count 1;
           open -u \"$FTP_USERNAME\",\"$FTP_PASSWORD\" \"$FTP_SERVER\";
-          mirror --reverse --verbose --only-newer --no-perms --parallel=1 \
+          mirror --reverse --verbose --delete --only-newer --no-perms --parallel=1 \
             --exclude-glob .git/ \
             --exclude-glob .github/ \
             --exclude-glob .DS_Store \
