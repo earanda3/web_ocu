@@ -3529,14 +3529,34 @@
             return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
         }
 
-        // Re-applies the current theme color to every mask-recolored image on the
-        // canvas (kuki cookies, the about-cat logo, ...). Called from applyColors().
+        // The about-cat logo is a self-contained vector (ocugat.svg): recolour it by
+        // swapping its single fill. Unlike the kuki mask (which references an external
+        // PNG and can fail to render inside an <img> in secure static-image mode), a
+        // self-contained SVG always renders and stays crisp at any canvas zoom.
+        let __catSvgText = null;
+        function loadCatSvg() {
+            if (__catSvgText != null) return Promise.resolve(__catSvgText);
+            return fetch('ocugat.svg')
+                .then(r => (r.ok ? r.text() : null))
+                .then(t => { __catSvgText = t; return t; })
+                .catch(() => null);
+        }
+        function buildRecoloredCatSrc(color) {
+            if (!__catSvgText) return null;
+            const recolored = __catSvgText.replace(/fill="#[0-9a-fA-F]{3,6}"/g, 'fill="' + color + '"');
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(recolored);
+        }
+
+        // Re-applies the current theme color to every recolorable image on the canvas
+        // (kuki cookies via alpha mask, the about-cat via SVG fill). From applyColors().
         function recolorMaskedImages(color) {
             document.querySelectorAll('#canvas img[data-mask-src]').forEach(img => {
                 const w = img.dataset.maskW, h = img.dataset.maskH;
                 if (!w || !h) return;
                 img.src = buildRecolorableSvgSrc(img.dataset.maskSrc, w, h, color);
             });
+            const catSrc = buildRecoloredCatSrc(color);
+            if (catSrc) document.querySelectorAll('#canvas img[data-cat-svg]').forEach(img => { img.src = catSrc; });
         }
         window.recolorMaskedImages = recolorMaskedImages;
 
@@ -5314,18 +5334,17 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             // No click action: image is decorative/draggable only
             aboutBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // Recolor the cat logo to the current theme color (same mask technique
-            // used for the Kuki cookies), keeping full native-resolution quality.
+            // Render the cat logo from the ocugat.svg vector, recoloured to the current
+            // theme color. Vector = crisp at any zoom and renders reliably (no external
+            // image inside the SVG). Falls back to the plain svg if the fetch fails.
             (async () => {
                 try {
                     const catImg = aboutBtn.querySelector('img');
                     if (!catImg) return;
-                    const src = 'ocugat.png';
-                    const { w, h } = await getImageNaturalSize(src);
-                    catImg.dataset.maskSrc = src;
-                    catImg.dataset.maskW = w;
-                    catImg.dataset.maskH = h;
-                    catImg.src = buildRecolorableSvgSrc(src, w, h, window.__currentElColor || '#333333');
+                    catImg.dataset.catSvg = '1';
+                    const svg = await loadCatSvg();
+                    const recolored = svg ? buildRecoloredCatSrc(window.__currentElColor || '#333333') : null;
+                    catImg.src = recolored || 'ocugat.svg';
                 } catch { }
             })();
         }
