@@ -3500,31 +3500,51 @@
         window.KUKI_MOCHI = 'assets/kuki/mochikuk3.png';
         window.KUKI_MOCHI_CHANCE = 0.08; // rare: ~1 in every 12 spawns
 
-        // Natural pixel size cache, keyed by source path (needed so the wrapping
-        // SVG declares a matching viewBox — otherwise the browser can't infer the
-        // image's aspect ratio from a data URI).
-        const __maskImgSizeCache = {};
-        function getImageNaturalSize(src) {
+        // Mask-image data cache, keyed by source path: natural pixel size (so the
+        // wrapping SVG declares a matching viewBox) PLUS the image re-encoded as a
+        // base64 data URI. The base64 embed matters — an SVG used as an <img src>
+        // cannot reference an *external* file via <image href="...">, the browser
+        // silently refuses to render it (this is what broke the kuki cookies and the
+        // about-cat logo). Embedding the PNG bytes directly makes the SVG fully
+        // self-contained, so it always renders.
+        const __maskImgDataCache = {};
+        function getMaskImageData(src) {
             return new Promise((resolve) => {
-                if (__maskImgSizeCache[src]) { resolve(__maskImgSizeCache[src]); return; }
-                const probe = new Image();
-                probe.onload = () => {
-                    const size = { w: probe.naturalWidth || 512, h: probe.naturalHeight || 512 };
-                    __maskImgSizeCache[src] = size;
-                    resolve(size);
-                };
-                probe.onerror = () => resolve({ w: 512, h: 512 });
-                probe.src = src;
+                if (__maskImgDataCache[src]) { resolve(__maskImgDataCache[src]); return; }
+                fetch(src)
+                    .then(r => r.blob())
+                    .then(blob => new Promise((res, rej) => {
+                        const reader = new FileReader();
+                        reader.onload = () => res(reader.result); // data:image/png;base64,...
+                        reader.onerror = rej;
+                        reader.readAsDataURL(blob);
+                    }))
+                    .then(dataUri => {
+                        const probe = new Image();
+                        probe.onload = () => {
+                            const data = { w: probe.naturalWidth || 512, h: probe.naturalHeight || 512, dataUri };
+                            __maskImgDataCache[src] = data;
+                            resolve(data);
+                        };
+                        probe.onerror = () => resolve({ w: 512, h: 512, dataUri });
+                        probe.src = dataUri;
+                    })
+                    .catch(() => resolve({ w: 512, h: 512, dataUri: null }));
             });
         }
 
-        // Build a data-URI SVG that masks a native raster's alpha channel over a
-        // solid-color rect, so the artwork's linework renders in an arbitrary color.
-        function buildRecolorableSvgSrc(pngSrc, w, h, color) {
-            const abs = new URL(pngSrc, window.location.href).href;
+        // Build a data-URI SVG that masks a raster's alpha channel over a solid-color
+        // rect, so the artwork's linework renders in an arbitrary color. `dataUri` must
+        // be a self-contained data: URI (see getMaskImageData) — never an external path.
+        function buildRecolorableSvgSrc(dataUri, w, h, color) {
+            if (!dataUri) return null;
             const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h +
                 '" viewBox="0 0 ' + w + ' ' + h + '">' +
-                '<mask id="m"><image width="' + w + '" height="' + h + '" href="' + abs + '"/></mask>' +
+                // mask-type="alpha": the artwork is dark line-art (near-black RGB), and SVG
+                // masks default to LUMINANCE — black has ~0 luminance, so a luminance mask
+                // would hide the art even where its alpha is fully opaque. Alpha mode uses
+                // the PNG's actual alpha channel instead.
+                '<mask id="m" mask-type="alpha"><image width="' + w + '" height="' + h + '" href="' + dataUri + '"/></mask>' +
                 '<rect width="' + w + '" height="' + h + '" fill="' + color + '" mask="url(#m)"/></svg>';
             return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
         }
@@ -3553,7 +3573,12 @@
             document.querySelectorAll('#canvas img[data-mask-src]').forEach(img => {
                 const w = img.dataset.maskW, h = img.dataset.maskH;
                 if (!w || !h) return;
-                img.src = buildRecolorableSvgSrc(img.dataset.maskSrc, w, h, color);
+                // The data URI is cached (spawn already fetched it); this resolves
+                // synchronously in practice. Falls back to an async refetch if not.
+                getMaskImageData(img.dataset.maskSrc).then(({ dataUri }) => {
+                    const src = buildRecolorableSvgSrc(dataUri, w, h, color);
+                    if (src) img.src = src;
+                });
             });
             const catSrc = buildRecoloredCatSrc(color);
             if (catSrc) document.querySelectorAll('#canvas img[data-cat-svg]').forEach(img => { img.src = catSrc; });
@@ -3565,7 +3590,7 @@
             const pngSrc = isMochi
                 ? window.KUKI_MOCHI
                 : window.KUKI_COOKIES[Math.floor(Math.random() * window.KUKI_COOKIES.length)];
-            const { w, h } = await getImageNaturalSize(pngSrc);
+            const { w, h, dataUri } = await getMaskImageData(pngSrc);
             const color = window.__currentElColor || '#333333';
             const img = document.createElement('img');
             img.alt = '';
@@ -3574,7 +3599,7 @@
             img.dataset.maskSrc = pngSrc;
             img.dataset.maskW = w;
             img.dataset.maskH = h;
-            img.src = buildRecolorableSvgSrc(pngSrc, w, h, color);
+            img.src = buildRecolorableSvgSrc(dataUri, w, h, color) || pngSrc;
             img.style.position = 'absolute';
             if (window.__spawnFromSnake) {
                 const width = Math.floor(70 + Math.random() * 160); // 70..230px
