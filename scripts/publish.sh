@@ -38,6 +38,21 @@ else
   echo "  (cap .stl a content/*/)"
 fi
 
+# Neteja de .glb ORFES: si has esborrat un .stl, esborrem també el seu .glb (que és
+# el que es publica i es veu a la web). Els .glb estan a git, així que és recuperable.
+echo ""
+echo "①b Netejant models 3D on s'ha esborrat l'STL…"
+REMOVED_GLB=0
+while IFS= read -r -d '' glb; do
+  stl="${glb%.glb}.stl"
+  if [ ! -f "$stl" ]; then
+    echo "  ✗ esborrant «$(basename "$glb")» (ja no existeix $(basename "$stl"))"
+    rm -f "$glb"
+    REMOVED_GLB=$((REMOVED_GLB + 1))
+  fi
+done < <(find content -mindepth 2 -name '*.glb' -print0 2>/dev/null)
+[ "$REMOVED_GLB" -eq 0 ] && echo "  (cap orfe)"
+
 echo ""
 echo "② Regenerant el manifest…"
 "$PYTHON" scripts/generate_manifest.py
