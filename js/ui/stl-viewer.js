@@ -164,15 +164,16 @@ function enableStlResize(container, viewer) {
     // Wheel controls (use capture to prevent conflicts)
     container.addEventListener('wheel', (e) => {
         if (e.ctrlKey || e.metaKey) {
-            // Ctrl/Cmd+Wheel: OPACITY (HIGHEST PRIORITY - ALWAYS WORKS)
+            // Trackpad PINCH (macOS delivers it as a ctrlKey wheel) / Ctrl+wheel → ZOOM.
+            // Dollies the camera in/out (the natural pinch-to-zoom). Adaptive clipping
+            // planes keep the model from ever being sliced. setDistance clamps the range.
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-            if (viewer.mesh && viewer.mesh.material) {
-                const currentOpacity = viewer.mesh.material.opacity;
-                const delta = -Math.sign(e.deltaY) * 0.05;
-                const newOpacity = Math.min(1, Math.max(0.1, currentOpacity + delta));
-                viewer.mesh.material.opacity = newOpacity;
+            if (viewer.controls && viewer.camera) {
+                const d = viewer.camera.position.distanceTo(viewer.controls.target);
+                const step = Math.max(-0.25, Math.min(0.25, e.deltaY * 0.01));
+                viewer.controls.setDistance(d * Math.exp(step));
             }
             return false;
         } else if (e.altKey) {
@@ -193,15 +194,14 @@ function enableStlResize(container, viewer) {
             }
             return false;
         } else if (e.shiftKey) {
-            // Shift+Wheel: scale object (change mesh scale)
+            // Shift + wheel/scroll → OPACITY (the practical stand-in for a 3-finger
+            // gesture, which browsers don't expose). Works on trackpad and mouse.
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-            if (viewer.mesh) {
-                const currentScale = viewer.mesh.scale.x;
+            if (viewer.mesh && viewer.mesh.material) {
                 const delta = -Math.sign(e.deltaY) * 0.05;
-                const newScale = Math.min(3, Math.max(0.3, currentScale + delta));
-                viewer.mesh.scale.set(newScale, newScale, newScale);
+                viewer.mesh.material.opacity = Math.min(1, Math.max(0.1, viewer.mesh.material.opacity + delta));
             }
             return false;
         } else {
