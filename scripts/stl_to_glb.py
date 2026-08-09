@@ -28,14 +28,38 @@ import sys
 import glob
 import subprocess
 import tempfile
-import trimesh
+# NOTE: `trimesh` is imported lazily (only when a model actually needs converting),
+# so routine runs with nothing new to convert don't require it to be installed.
 
 QUANT_POSITION_BITS = 14
 COMPRESSION_LEVEL = 7  # 0..10, higher = smaller + slower (quality unaffected)
 DEFAULT_DIR = os.path.join(os.path.dirname(__file__), "..", "content", "ocu3D")
 
 
+def is_up_to_date(stl_path: str) -> bool:
+    """True if a .glb already exists and is newer than its .stl source."""
+    glb_path = os.path.splitext(stl_path)[0] + ".glb"
+    return (
+        os.path.exists(glb_path)
+        and os.path.getmtime(glb_path) >= os.path.getmtime(stl_path)
+    )
+
+
+def _require_trimesh():
+    try:
+        import trimesh
+        return trimesh
+    except ImportError:
+        sys.exit(
+            "\nERROR: falta el paquet 'trimesh', necessari per convertir STL a .glb.\n"
+            "Instal·la'l una sola vegada amb:\n"
+            "    pip3 install trimesh\n"
+            "(Si dóna problemes amb Python 3.14, digues-m'ho i et munto un entorn amb python3.12.)\n"
+        )
+
+
 def convert(stl_path: str) -> None:
+    trimesh = _require_trimesh()
     base, _ = os.path.splitext(stl_path)
     glb_path = base + ".glb"
     mesh = trimesh.load(stl_path, process=False)
@@ -68,13 +92,25 @@ def convert(stl_path: str) -> None:
 
 def main() -> None:
     args = sys.argv[1:]
+    force = "--force" in args
+    args = [a for a in args if a != "--force"]
     files = args if args else sorted(glob.glob(os.path.join(DEFAULT_DIR, "*.stl")))
     if not files:
         print("No .stl files found.")
         return
-    print(f"Converting {len(files)} model(s) to Draco .glb "
+
+    # Skip models that already have an up-to-date .glb (unless --force) so re-runs
+    # are fast — only newly added or edited .stl files get re-converted.
+    todo = [f for f in files if force or not is_up_to_date(f)]
+    skipped = len(files) - len(todo)
+    if skipped:
+        print(f"{skipped} model(s) already up to date — skipping.")
+    if not todo:
+        print("Nothing to convert.")
+        return
+    print(f"Converting {len(todo)} model(s) to Draco .glb "
           f"(qp={QUANT_POSITION_BITS}, level={COMPRESSION_LEVEL})…")
-    for f in files:
+    for f in todo:
         convert(f)
     print("Done.")
 
