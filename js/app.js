@@ -5487,6 +5487,18 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             content.addEventListener('touchstart', handleTouchStart, { passive: false });
         })();
 
+        // Kuki cookies are hand-drawn line art at a fixed native resolution (see
+        // scripts/build_kuki.py) — upscaling them past that blurs the linework, so the
+        // resize interactions below cap kuki-cookie images to their native pixel width.
+        // dataset.maskW (set at spawn time, see spawnRandomKukiCookie) holds that width.
+        function getResizeMaxWidth(img) {
+            if (img.classList && img.classList.contains('kuki-cookie')) {
+                const nativeW = parseFloat(img.dataset.maskW);
+                if (nativeW > 0) return nativeW;
+            }
+            return 3000;
+        }
+
         // Enable Shift+Wheel resize for all images inside #canvas (no frames/handles)
         function enableShiftWheelResize(img) {
             // Ensure explicit width/height so resizing is predictable
@@ -5503,7 +5515,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                 e.stopPropagation(); // avoid triggering global canvas zoom
                 const current = parseFloat(img.style.width) || img.clientWidth || 60;
                 const factor = 1 + (-Math.sign(e.deltaY)) * 0.08; // smooth scaling
-                const next = Math.min(3000, Math.max(16, current * factor));
+                const next = Math.min(getResizeMaxWidth(img), Math.max(16, current * factor));
                 img.style.width = next + 'px';
                 img.style.height = Math.max(1, Math.round(next * ratio)) + 'px';
             }, { passive: false });
@@ -5619,6 +5631,17 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                     if (dir.top) newTop = start.top + (start.height - newHeight);
                 }
 
+                // Cap at the image's max resize width (native resolution for kuki cookies —
+                // see getResizeMaxWidth), keeping the aspect ratio and re-anchoring left/top
+                // so a left/top-edge drag doesn't visually jump when clamped.
+                const maxW = getResizeMaxWidth(img);
+                if (newWidth > maxW) {
+                    newWidth = maxW;
+                    newHeight = Math.round(newWidth * start.ratio);
+                    if (dir.left) newLeft = start.left + (start.width - newWidth);
+                    if (dir.top) newTop = start.top + (start.height - newHeight);
+                }
+
                 img.style.width = newWidth + 'px';
                 img.style.height = newHeight + 'px';
                 img.style.left = newLeft + 'px';
@@ -5656,7 +5679,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const dist = Math.hypot(dx, dy);
                 const scale = dist / (pinch.dist || dist);
-                const w = Math.min(3000, Math.max(16, Math.round(pinch.width * scale)));
+                const w = Math.min(getResizeMaxWidth(img), Math.max(16, Math.round(pinch.width * scale)));
                 const h = Math.max(1, Math.round(w * pinch.ratio));
                 img.style.width = w + 'px';
                 img.style.height = h + 'px';
@@ -5702,16 +5725,23 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             // Mark when the user moves/resizes this image to stop auto-placement
             img.addEventListener('mouseup', () => { img.dataset.userMoved = '1'; });
             img.addEventListener('touchend', () => { img.dataset.userMoved = '1'; });
-            // If spawned by the snake, randomize size and place in safe random area, then skip auto-placement
+            // If spawned by the snake, randomize size and place in safe random area, then skip auto-placement.
             if (window.__spawnFromSnake) {
-                try {
-                    const minW = 120, maxW = 480;
-                    const rw = Math.floor(minW + Math.random() * (maxW - minW));
-                    img.style.width = rw + 'px';
-                    img.style.height = 'auto'; // _fixHeight will correct it once loaded
-                    placeElementInSafeArea(img);
-                    img.dataset.userMoved = '1';
-                } catch { }
+                // Only when the caller hasn't already sized it (every current caller — kuki cookies,
+                // newtro images, etc. — sets style.width and calls placeElementInSafeArea itself
+                // before calling enhanceImage). This fallback used to re-randomize on top of that,
+                // which could push images like the kuki cookies above their native pixel size and
+                // blur them. Kept as a safety net for any future caller that doesn't pre-size.
+                if (!img.style.width) {
+                    try {
+                        const minW = 120, maxW = 480;
+                        const rw = Math.floor(minW + Math.random() * (maxW - minW));
+                        img.style.width = rw + 'px';
+                        img.style.height = 'auto'; // _fixHeight will correct it once loaded
+                        placeElementInSafeArea(img);
+                        img.dataset.userMoved = '1';
+                    } catch { }
+                }
             } else {
                 // Default placement next to the reference logo and same size
                 placeNextToReference(img);
