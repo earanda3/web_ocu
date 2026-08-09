@@ -260,11 +260,13 @@
             border-radius: 0 !important;
         }
 
-        /* Intro overlay */
+        /* Intro overlay — the words show through it now (no white curtain), and it must
+           never intercept clicks meant for the words underneath. */
         #intro-overlay {
             position: fixed;
             inset: 0;
-            background: white;
+            background: transparent;
+            pointer-events: none;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -272,6 +274,27 @@
             gap: 24px;
             z-index: 1000;
             transition: opacity 400ms ease;
+        }
+
+        /* One centred line of the intro phrase, floating over the live canvas. */
+        .intro-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35em 0.6em;
+            max-width: min(92vw, 900px);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 500ms ease;
+        }
+
+        .intro-line.show {
+            opacity: 1;
+        }
+
+        .intro-line.fade-out {
+            opacity: 0;
         }
 
         #intro-overlay.hidden {
@@ -336,15 +359,8 @@
             transform: translateY(6px);
         }
 
-        /* Intro mode: show only intro words over clean white background */
-        body.intro-active {
-            background: #fff !important;
-        }
-
-        body.intro-active #canvas> :not(.intro-free-word) {
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
+        /* Intro mode: the words stay fully visible now; the phrase just floats on top.
+           (No longer hides the canvas — only kept as a hook to gate a few keys briefly.) */
 
         @media (max-width: 768px) {
             #intro-overlay {

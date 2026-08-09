@@ -12,11 +12,9 @@
 </head>
 
 <body>
-    <!-- Welcome / game-like intro -->
-    <div id="intro-overlay">
-        <div class="intro-text" id="intro-1"></div>
-        <div class="intro-text" id="intro-2" style="opacity: 0;"></div>
-    </div>
+    <!-- Welcome intro: a short centred phrase that floats over the already-visible words.
+         Lines are injected by playIntro() in js/app.js. -->
+    <div id="intro-overlay"></div>
     <div id="canvas">
         <div id="currency"
             style="position: absolute; left: 100px; top: 300px; font-size: 24px; color: #333; cursor: move; user-select: none;">

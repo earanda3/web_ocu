@@ -153,10 +153,12 @@
             document.body.classList.add('intro-active');
             window.__introFrozen = false;
 
+            // The canvas words are already built, placed and visible (setupWorldWords
+            // ran on load). The intro is now purely a short phrase that FLOATS, centred,
+            // over the live canvas — no white curtain, nothing hidden, nothing to reposition.
+            const overlay = document.getElementById('intro-overlay');
             let spawnedEls = [];
-            // Every timer that drives the intro sequence is tracked here so endIntro()
-            // can cancel the whole chain — otherwise pending spawns keep firing (and
-            // used to dump words into the canvas) long after the intro is over.
+            // Every timer driving the phrase is tracked so endIntro() can cancel the chain.
             let introTimeouts = [];
             const sto = (fn, ms) => { const id = setTimeout(fn, ms); introTimeouts.push(id); return id; };
             let __introEnded = false;
@@ -177,80 +179,37 @@
                     __introKeydownHandler = null;
                 }
 
-                // IMPORTANT: build + position every word while the canvas is STILL hidden
-                // (body.intro-active keeps them at opacity 0). Only after they're placed
-                // in their random spots do we reveal — so nothing ever visibly jumps.
-                try { window.ensureResetWord = ensureResetWord; } catch { }
-                const ensureFunctions = [
-                    'ensureStopWord', 'ensureResetWord',
-                    'ensureSerpWord',
-                    'ensurePixelWord', 'ensureLaberintWord', 'ensurePongWord',
-                    'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord',
-                    'ensureKukiWord'
-                ];
-                ensureFunctions.forEach(fnName => {
-                    if (typeof window[fnName] === 'function') {
-                        try { window[fnName](); } catch { }
-                    }
-                });
-                if (typeof fetchContentManifest === 'function') {
-                    try { fetchContentManifest(); } catch { }
+                // Words are already on screen — just fade the floating phrase away.
+                if (overlay) {
+                    overlay.classList.add('hidden');
+                    setTimeout(() => { try { overlay.remove(); } catch { } }, 420);
                 }
-
-                // Place words at random, then reveal — all synchronously, so both style
-                // writes land before the next paint (the browser shows the final placed
-                // + revealed state in one frame, with no visible jump or flash). Done
-                // synchronously on purpose: requestAnimationFrame is paused while the tab
-                // is hidden, which would otherwise leave the reveal stuck.
-                try { initWordPositions(); } catch { }
-                const overlay = document.getElementById('intro-overlay');
-                if (overlay) overlay.remove();
                 document.body.classList.remove('intro-active');
             }
 
-
-            // Spawn a sequence and hold the last word extraMs longer (others fade out)
-            function playSequence(words, extraMs, onDone) {
-                let i = 0;
-                const base = 1350;
-                const localEls = [];
-                const spawnNext = () => {
-                    if (i >= words.length) return;
-                    const el = spawnIntroWord(words[i], INTRO_FONTS_WEIGHTED);
-                    localEls.push(el);
-                    spawnedEls.push(el);
-                    i++;
-                    const jitter = Math.floor(Math.random() * 120) - 60;
-                    sto(spawnNext, Math.max(420, base + jitter));
-                    if (i === words.length) {
-                        sto(() => {
-                            const last = localEls[localEls.length - 1];
-                            localEls.slice(0, -1).forEach(node => {
-                                try {
-                                    node.classList.add('fade-out');
-                                    setTimeout(() => node.remove(), 450);
-                                } catch { }
-                            });
-                            // Lock last word so it cannot be dragged during solo
-                            try {
-                                if (last) {
-                                    last.style.pointerEvents = 'none';
-                                    last.style.cursor = 'default';
-                                }
-                            } catch { }
-                            const baseHold = 2200; // base solo time for any last word
-                            sto(() => {
-                                try { if (last) last.classList.add('fade-out'); } catch { }
-                                sto(() => {
-                                    // remove last from DOM as well before continuing
-                                    try { if (last) last.remove(); } catch { }
-                                    if (typeof onDone === 'function') onDone();
-                                }, 480);
-                            }, baseHold + extraMs);
-                        }, 200);
-                    }
-                };
-                spawnNext();
+            // Show one centred line of the phrase: spin/fade in, hold, fade out, then onDone.
+            function showIntroLine(words, holdMs, onDone) {
+                if (!overlay || __introEnded) { if (typeof onDone === 'function') onDone(); return; }
+                const line = document.createElement('div');
+                line.className = 'intro-line';
+                words.forEach(w => {
+                    const el = document.createElement('span');
+                    el.className = 'intro-free-word';
+                    createWordSlotMachineCustom(el, w, INTRO_FONTS_WEIGHTED);
+                    line.appendChild(el);
+                });
+                overlay.appendChild(line);
+                spawnedEls.push(line);
+                // Trigger the fade-in with a tiny timeout (NOT rAF — rAF is paused while
+                // the tab is hidden, which would leave the line stuck invisible).
+                sto(() => line.classList.add('show'), 30);
+                sto(() => {
+                    line.classList.add('fade-out');
+                    sto(() => {
+                        try { line.remove(); } catch { }
+                        if (typeof onDone === 'function') onDone();
+                    }, 520);
+                }, holdMs);
             }
 
             // Allow skipping intro with Enter (desktop) or double-tap (mobile)
@@ -278,20 +237,48 @@
             };
             document.addEventListener('touchstart', introTouchHandler, true);
 
-            // Play two parts with adjusted solo timings:
-            // Part 1: 'Món' no manté més temps que la resta (reduïm la seva solo time a ~350ms)
-            // Part 2: 'ocu' només una mica més que la resta (~700ms)
-            playSequence(INTRO_WORDS_1, -1850, () => {
-                playSequence(INTRO_WORDS_2, 500, () => {
+            // Two centred lines, natural reading order (~10s total, skippable):
+            //   "Aquest És L'univers ocu"  →  "Cada Paraula És Un Món"
+            // Each: ~0.5s spin-in + 4.2s hold + ~0.5s fade-out ≈ 4.7s.
+            showIntroLine(INTRO_WORDS_2, 4200, () => {
+                showIntroLine(INTRO_WORDS_1, 4200, () => {
                     endIntro();
                 });
             });
         }
 
-        // Play the full intro animation on load. It ends naturally when the phrase
-        // finishes, or early if the user presses Enter / double-taps (see playIntro).
+        // Build every interactive word and lay them out at random ONCE, up front, so the
+        // canvas is populated and VISIBLE from the very first paint. Positions never change
+        // afterwards → no reposition jump, ever. Runs before the intro (which only floats a
+        // short phrase over the already-visible words).
+        let __worldWordsReady = false;
+        function setupWorldWords() {
+            if (__worldWordsReady) return;
+            __worldWordsReady = true;
+            try { window.ensureResetWord = ensureResetWord; } catch { }
+            const ensureFunctions = [
+                'ensureStopWord', 'ensureResetWord',
+                'ensureSerpWord',
+                'ensurePixelWord', 'ensureLaberintWord', 'ensurePongWord',
+                'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord',
+                'ensureKukiWord'
+            ];
+            ensureFunctions.forEach(fnName => {
+                if (typeof window[fnName] === 'function') {
+                    try { window[fnName](); } catch { }
+                }
+            });
+            if (typeof fetchContentManifest === 'function') {
+                try { fetchContentManifest(); } catch { }
+            }
+            try { initWordPositions(); } catch { }
+        }
+
+        // On load: show all words immediately, then float the shortened phrase over them.
+        // The phrase ends naturally (~10s) or early via Enter / double-tap (see playIntro).
         window.addEventListener('load', () => {
             window.__introHasPlayed = false;
+            setupWorldWords();
             playIntro();
         });
 
