@@ -81,7 +81,6 @@ window.CONTENT_MANIFEST = [
         "ocu3D16.glb",
         "ocu3D4.glb",
         "ocu3D5.glb",
-        "ocu3D6.glb",
         "shapr3d_export_2026-04-01_01h36m.glb",
         "shapr3d_export_2026-04-01_01h37m.glb"
       ],
