@@ -871,6 +871,13 @@ function createOrbitControls(camera, domElement) {
         camera.lookAt(controls.target);
     }
 
+    // Distance that frames the model nicely; set once the model's size is known.
+    controls.fitDistance = 100;
+    controls.setDistance = function (d) {
+        spherical.radius = Math.max(controls.minDistance, Math.min(controls.maxDistance, d));
+        updateCameraPosition();
+    };
+
     updateCameraPosition();
     return controls;
 }
@@ -917,6 +924,11 @@ function loadSTLFile(viewer, filePath) {
             const scale = 50 / maxDim;
             geometry.scale(scale, scale, scale);
 
+            // Bounding-sphere radius (of the normalised geometry) drives the adaptive
+            // clipping planes and zoom limits so the model never gets sliced.
+            geometry.computeBoundingSphere();
+            viewer.modelRadius = (geometry.boundingSphere && geometry.boundingSphere.radius) || 30;
+
             const opts = viewer.options || {};
             
             // Generate random color (HSL for better results)
@@ -946,6 +958,16 @@ function loadSTLFile(viewer, filePath) {
 
             if (viewer.controls) {
                 viewer.controls.target.set(0, 0, 0);
+                const R = viewer.modelRadius;
+                // Distance that fits the model in the frame with margin (both axes).
+                const vFov = viewer.camera.fov * Math.PI / 180;
+                const tanV = Math.tan(vFov / 2);
+                const tanH = tanV * (viewer.camera.aspect || 1);
+                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 1.3;
+                // Generous zoom range: get right up close, or pull way back — no early cap.
+                viewer.controls.minDistance = Math.max(0.05, R * 0.05);
+                viewer.controls.maxDistance = R * 80;
+                viewer.controls.setDistance(viewer.controls.fitDistance);
             }
         })
         .catch(error => {
@@ -995,9 +1017,28 @@ function parseSTL(arrayBuffer) {
     return geometry;
 }
 
+// Keep the near/far clipping planes wrapped snugly around the model AT ANY zoom or
+// scale, so it's never sliced by a plane — the main cause of the "the object gets cut
+// off / disappears" problem. Recomputed every frame from the current camera distance
+// and the model's effective radius (bounding sphere × current mesh scale).
+function updateClippingPlanes(viewer) {
+    if (!viewer.camera || !viewer.controls || !viewer.mesh) return;
+    const scl = viewer.mesh.scale ? viewer.mesh.scale.x : 1;
+    const R = (viewer.modelRadius || 30) * scl;
+    const d = viewer.camera.position.distanceTo(viewer.controls.target);
+    const near = Math.max(0.01, (d - R) * 0.5);
+    const far = (d + R) * 2 + 10;
+    if (Math.abs(viewer.camera.near - near) > 1e-4 || Math.abs(viewer.camera.far - far) > 1e-2) {
+        viewer.camera.near = near;
+        viewer.camera.far = far;
+        viewer.camera.updateProjectionMatrix();
+    }
+}
+
 function animateStl(viewer) {
     viewer.animationId = requestAnimationFrame(() => animateStl(viewer));
     if (viewer.renderer && viewer.scene && viewer.camera) {
+        updateClippingPlanes(viewer);
         viewer.renderer.render(viewer.scene, viewer.camera);
     }
 }
