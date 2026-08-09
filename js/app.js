@@ -274,12 +274,21 @@
             try { initWordPositions(); } catch { }
         }
 
-        // On load: show all words immediately, then float the shortened phrase over them.
-        // The phrase ends naturally (~10s) or early via Enter / double-tap (see playIntro).
+        // Intro toggle: posa-ho a `true` per tornar a activar la frase d'entrada.
+        // (Desactivada de moment; el codi de la intro es conserva intacte a playIntro.)
+        const INTRO_ENABLED = false;
+
+        // On load: show all words immediately. If the intro is enabled, float the
+        // shortened phrase over them; otherwise go straight to the canvas.
         window.addEventListener('load', () => {
             window.__introHasPlayed = false;
             setupWorldWords();
-            playIntro();
+            if (INTRO_ENABLED) {
+                playIntro();
+            } else {
+                const ov = document.getElementById('intro-overlay');
+                if (ov) ov.remove();
+            }
         });
 
         // ==============================
@@ -5685,6 +5694,9 @@ openStlViewer('content/ocu3D/TukTuk.glb');
         function enhanceImage(img) {
             if (!img || img.dataset.enhanced === '1') return;
             img.dataset.enhanced = '1';
+            // Decode off the main thread and defer offscreen loads → smoother spawning,
+            // less jank when images appear on the canvas.
+            try { img.decoding = 'async'; img.loading = 'lazy'; } catch (e) { }
             cleanImageStyles(img);
             // Ensure absolute positioning and numeric left/top
             img.style.position = 'absolute';
@@ -5955,15 +5967,19 @@ openStlViewer('content/ocu3D/TukTuk.glb');
         // the compositor to keep #canvas on its own GPU layer. Both are released a
         // short moment after the last navigation event so the site feels alive again.
         let __interactClearTimer = null;
-        function markInteracting() {
-            if (!window.__slotPaused) {
-                window.__slotPaused = true;
-                canvas.style.willChange = 'transform';
-            }
+        // Pause the letter animations during navigation, and (for direct-manipulation
+        // gestures) drop the CSS transform transition so the canvas tracks the finger/
+        // cursor 1:1. Pass immediate=false for wheel zoom, where the 0.3s CSS transition
+        // is what smooths the small stepped increments on desktop.
+        // (#canvas keeps `will-change: transform` from CSS, so its GPU layer stays
+        // promoted — we don't toggle that here, to avoid per-gesture layer churn.)
+        function markInteracting(immediate) {
+            window.__slotPaused = true;
+            if (immediate) canvas.style.transition = 'none';
             if (__interactClearTimer) clearTimeout(__interactClearTimer);
             __interactClearTimer = setTimeout(() => {
                 window.__slotPaused = false;
-                canvas.style.willChange = 'auto';
+                canvas.style.transition = ''; // restore CSS transition for programmatic moves
                 __interactClearTimer = null;
             }, 220);
         }
@@ -5983,7 +5999,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                 return;
             }
             e.preventDefault();
-            markInteracting();
+            markInteracting(false); // keep the CSS transition so wheel zoom stays smooth on desktop
 
             // Reduced zoom increment for smoother control
             const delta = -Math.sign(e.deltaY) * 0.05;
@@ -6037,7 +6053,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             }
             if (e.touches.length === 2) {
                 e.preventDefault();
-                markInteracting();
+                markInteracting(true);
                 isPanningCanvas = false;
                 window.__snakePanLocked = false;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -6082,7 +6098,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
 
         document.addEventListener('mousemove', (e) => {
             if (isPanningCanvas) {
-                markInteracting();
+                markInteracting(true);
                 panX = (e.clientX - panStartX) / zoomLevel;
                 panY = (e.clientY - panStartY) / zoomLevel;
                 updateCanvasTransform();
@@ -6138,7 +6154,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                 }
                 if (isPanningCanvas) {
                     e.preventDefault();
-                    markInteracting();
+                    markInteracting(true);
                     const newPanX = (e.touches[0].clientX - panStartX) / zoomLevel;
                     const newPanY = (e.touches[0].clientY - panStartY) / zoomLevel;
                     const now = Date.now();
@@ -6153,49 +6169,21 @@ openStlViewer('content/ocu3D/TukTuk.glb');
         }, { passive: false });
 
         document.addEventListener('touchend', (ev) => {
-            // On mobile: after pinch, smoothly settle to nearest snap level
+            // On mobile: keep the zoom EXACTLY where the pinch ended — no snapping to
+            // discrete levels. Snapping is what made the zoom feel "stepped"; a free,
+            // continuous zoom feels smooth like a maps app.
             if (isMobile && wasPinching && ev.touches.length < 2) {
                 wasPinching = false;
-                if (_snapAnimRaf) cancelAnimationFrame(_snapAnimRaf);
-                const nearest = SNAP_ZOOM_LEVELS.reduce((a, b) =>
-                    Math.abs(b - zoomLevel) < Math.abs(a - zoomLevel) ? b : a
-                );
-                if (Math.abs(nearest - zoomLevel) > 0.01) {
-                    const z0 = zoomLevel, px0 = panX, py0 = panY;
-                    const cr = canvas.getBoundingClientRect();
-                    const lx = (lastPinchMidX - cr.left) / z0 - px0;
-                    const ly = (lastPinchMidY - cr.top)  / z0 - py0;
-                    const tpx = (lastPinchMidX - cr.left) / nearest - lx;
-                    const tpy = (lastPinchMidY - cr.top)  / nearest - ly;
-                    const t0 = performance.now(), dur = 300;
-                    const snapStep = (now) => {
-                        markInteracting(); // keep letter animation paused while the zoom settles
-                        const t = Math.min(1, (now - t0) / dur);
-                        const ease = 1 - Math.pow(1 - t, 3);
-                        zoomLevel = z0  + (nearest - z0)  * ease;
-                        panX      = px0 + (tpx    - px0)  * ease;
-                        panY      = py0 + (tpy    - py0)  * ease;
-                        updateCanvasTransform();
-                        if (t < 1) { _snapAnimRaf = requestAnimationFrame(snapStep); }
-                        else {
-                            _snapAnimRaf = null;
-                            zoomLevel = nearest; panX = tpx; panY = tpy;
-                            snapZoomIdx = SNAP_ZOOM_LEVELS.indexOf(nearest);
-                            updateCanvasTransform();
-                            scheduleStlQualityUpdate();
-                        }
-                    };
-                    _snapAnimRaf = requestAnimationFrame(snapStep);
-                } else {
-                    snapZoomIdx = SNAP_ZOOM_LEVELS.indexOf(nearest);
-                }
+                if (_snapAnimRaf) { cancelAnimationFrame(_snapAnimRaf); _snapAnimRaf = null; }
+                snapZoomIdx = getNearestSnapIdx(zoomLevel); // keep index roughly in sync
+                scheduleStlQualityUpdate();
             } else {
                 wasPinching = false;
             }
             // Momentum pan
             if (isPanningCanvas && (Math.abs(panVelX) > 0.3 || Math.abs(panVelY) > 0.3)) {
                 const applyMomentum = () => {
-                    markInteracting(); // keep letter animation paused during the inertia glide
+                    markInteracting(true); // keep letter animation paused during the inertia glide
                     panVelX *= 0.90; panVelY *= 0.90;
                     if (Math.abs(panVelX) < 0.05 && Math.abs(panVelY) < 0.05) {
                         panMomentumRaf = null; return;
