@@ -21,6 +21,10 @@ cd "$(dirname "$0")/.."
 
 MSG="${1:-Actualitza continguts (STL/PNG/PDF) — auto}"
 
+# Usa el venv amb trimesh si existeix (.venv/), si no el python3 del sistema.
+PYTHON="python3"
+[ -x ".venv/bin/python" ] && PYTHON=".venv/bin/python"
+
 echo "① Convertint STL nous o modificats a Draco .glb…"
 # Tots els .stl dins de subcarpetes de content/ (evita fitxers solts a l'arrel).
 # Bucle portable (macOS porta bash 3.2, sense `mapfile`); -print0 aguanta espais.
@@ -29,14 +33,14 @@ while IFS= read -r -d '' f; do
   STL_FILES+=("$f")
 done < <(find content -mindepth 2 -name '*.stl' -print0 2>/dev/null)
 if [ "${#STL_FILES[@]}" -gt 0 ]; then
-  python3 scripts/stl_to_glb.py "${STL_FILES[@]}"
+  "$PYTHON" scripts/stl_to_glb.py "${STL_FILES[@]}"
 else
   echo "  (cap .stl a content/*/)"
 fi
 
 echo ""
 echo "② Regenerant el manifest…"
-python3 scripts/generate_manifest.py
+"$PYTHON" scripts/generate_manifest.py
 
 echo ""
 echo "③ Preparant els canvis…"

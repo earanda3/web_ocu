@@ -59,3 +59,6 @@ testdir/
 
 # 3D model SOURCES: keep locally, ship the Draco .glb instead (scripts/stl_to_glb.py)
 content/**/*.stl
+
+# Python venv per a la conversió STL→glb (local, no es publica)
+.venv/
