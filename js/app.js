@@ -42,6 +42,7 @@
                 if (!window.__introFrozen) {
                     const intervalId = setInterval(() => {
                         if (window.__introFrozen) { return; }
+                        if (window.__slotPaused) return;
                         // remove all known fonts, then add a new one
                         fonts.forEach(f => span.classList.remove(f));
                         const newFont = fontList[Math.floor(Math.random() * fontList.length)];
@@ -91,6 +92,11 @@
 
         // Spawn a draggable intro word within a central safe area of the viewport
         function spawnIntroWord(text, fontList) {
+            // If the intro overlay is already gone (intro ended/skipped), do NOT spawn
+            // anything into the canvas — return a detached, invisible node so any
+            // still-pending sequence timers become harmless no-ops.
+            const overlay = document.getElementById('intro-overlay');
+            if (!overlay) return document.createElement('a');
             const el = document.createElement('a');
             el.href = '#';
             el.className = 'intro-free-word';
@@ -128,14 +134,7 @@
             createWordSlotMachineCustom(el, text, fontList);
 
             // Add to overlay (so it's visible above the white background)
-            const overlay = document.getElementById('intro-overlay');
-            if (overlay) {
-                overlay.appendChild(el);
-            } else {
-                // Fallback to canvas if overlay doesn't exist
-                const canvas = document.getElementById('canvas');
-                canvas.appendChild(el);
-            }
+            overlay.appendChild(el);
 
             // Add drag functionality
             addWordDragEvents(el);
@@ -155,26 +154,33 @@
             window.__introFrozen = false;
 
             let spawnedEls = [];
+            // Every timer that drives the intro sequence is tracked here so endIntro()
+            // can cancel the whole chain — otherwise pending spawns keep firing (and
+            // used to dump words into the canvas) long after the intro is over.
+            let introTimeouts = [];
+            const sto = (fn, ms) => { const id = setTimeout(fn, ms); introTimeouts.push(id); return id; };
+            let __introEnded = false;
 
             let __introKeydownHandler = null;
 
             function endIntro() {
+                if (__introEnded) return; // guard against double end (skip + natural finish)
+                __introEnded = true;
                 clearIntroIntervals();
+                introTimeouts.forEach(id => { try { clearTimeout(id); } catch { } });
+                introTimeouts = [];
                 spawnedEls.forEach(el => { try { el.remove(); } catch { } });
-                document.body.classList.remove('intro-active');
-
-                // Remove the intro overlay
-                const overlay = document.getElementById('intro-overlay');
-                if (overlay) overlay.remove();
 
                 window.__introHasPlayed = true;
                 if (__introKeydownHandler) {
                     try { document.removeEventListener('keydown', __introKeydownHandler, true); } catch { }
                     __introKeydownHandler = null;
                 }
-                // Override global ensureResetWord with local version before calling ensure fns
+
+                // IMPORTANT: build + position every word while the canvas is STILL hidden
+                // (body.intro-active keeps them at opacity 0). Only after they're placed
+                // in their random spots do we reveal — so nothing ever visibly jumps.
                 try { window.ensureResetWord = ensureResetWord; } catch { }
-                // Ensure all interactive words are present
                 const ensureFunctions = [
                     'ensureStopWord', 'ensureResetWord',
                     'ensureSerpWord',
@@ -182,18 +188,24 @@
                     'ensureAfegirWord', 'ensureArxiusWord', 'ensureTeclaLinkWord', 'ensureOrdreWord',
                     'ensureKukiWord'
                 ];
-
                 ensureFunctions.forEach(fnName => {
                     if (typeof window[fnName] === 'function') {
                         try { window[fnName](); } catch { }
                     }
                 });
-                // Direct call as fallback in case window lookup missed it
                 if (typeof fetchContentManifest === 'function') {
                     try { fetchContentManifest(); } catch { }
                 }
-                // Position words: 10 visible ones spread in viewport, rest outside
-                setTimeout(initWordPositions, 150);
+
+                // Place words at random, then reveal — all synchronously, so both style
+                // writes land before the next paint (the browser shows the final placed
+                // + revealed state in one frame, with no visible jump or flash). Done
+                // synchronously on purpose: requestAnimationFrame is paused while the tab
+                // is hidden, which would otherwise leave the reveal stuck.
+                try { initWordPositions(); } catch { }
+                const overlay = document.getElementById('intro-overlay');
+                if (overlay) overlay.remove();
+                document.body.classList.remove('intro-active');
             }
 
 
@@ -209,9 +221,9 @@
                     spawnedEls.push(el);
                     i++;
                     const jitter = Math.floor(Math.random() * 120) - 60;
-                    setTimeout(spawnNext, Math.max(420, base + jitter));
+                    sto(spawnNext, Math.max(420, base + jitter));
                     if (i === words.length) {
-                        setTimeout(() => {
+                        sto(() => {
                             const last = localEls[localEls.length - 1];
                             localEls.slice(0, -1).forEach(node => {
                                 try {
@@ -227,9 +239,9 @@
                                 }
                             } catch { }
                             const baseHold = 2200; // base solo time for any last word
-                            setTimeout(() => {
+                            sto(() => {
                                 try { if (last) last.classList.add('fade-out'); } catch { }
-                                setTimeout(() => {
+                                sto(() => {
                                     // remove last from DOM as well before continuing
                                     try { if (last) last.remove(); } catch { }
                                     if (typeof onDone === 'function') onDone();
@@ -276,20 +288,11 @@
             });
         }
 
-        // Execute intro to load words but end it immediately (no animation visible)
+        // Play the full intro animation on load. It ends naturally when the phrase
+        // finishes, or early if the user presses Enter / double-taps (see playIntro).
         window.addEventListener('load', () => {
-            // Set flag to skip intro animation
             window.__introHasPlayed = false;
-            
-            // Start intro (this loads all the words)
             playIntro();
-            
-            // End intro immediately after 50ms (just enough time to start)
-            setTimeout(() => {
-                // Find and trigger Enter key to skip intro
-                const event = new KeyboardEvent('keydown', { key: 'Enter' });
-                document.dispatchEvent(event);
-            }, 50);
         });
 
         // ==============================
@@ -2106,8 +2109,8 @@
 
         // Spread 10 key words across viewport; push all others outside
         function initWordPositions() {
-            const vw = window.innerWidth;
-            const vh = window.innerHeight;
+            const vw = window.innerWidth || document.documentElement.clientWidth || 1280;
+            const vh = window.innerHeight || document.documentElement.clientHeight || 800;
             const px = (typeof panX !== 'undefined' ? panX : 0);
             const py = (typeof panY !== 'undefined' ? panY : 0);
 
@@ -3799,6 +3802,9 @@
                     return;
                 }
                 const id = setInterval(() => {
+                    // Skip all layout/paint work while the user is panning/zooming
+                    // (the perpetual font-swaps are the main cause of navigation jank).
+                    if (window.__slotPaused) return;
                     fonts.forEach(font => span.classList.remove(font));
                     const newFont = fonts[Math.floor(Math.random() * fonts.length)];
                     span.classList.add(newFont);
@@ -5957,6 +5963,24 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             }
         });
 
+        // While the user is actively panning/zooming, pause the per-letter slot
+        // animations (their font-swaps force layout reflow and cause jank) and hint
+        // the compositor to keep #canvas on its own GPU layer. Both are released a
+        // short moment after the last navigation event so the site feels alive again.
+        let __interactClearTimer = null;
+        function markInteracting() {
+            if (!window.__slotPaused) {
+                window.__slotPaused = true;
+                canvas.style.willChange = 'transform';
+            }
+            if (__interactClearTimer) clearTimeout(__interactClearTimer);
+            __interactClearTimer = setTimeout(() => {
+                window.__slotPaused = false;
+                canvas.style.willChange = 'auto';
+                __interactClearTimer = null;
+            }, 220);
+        }
+
         // Mouse wheel zoom (desktop) - smoother control
         canvas.addEventListener('wheel', (e) => {
             // Ignore wheel events that originate inside the PDF modal or containers
@@ -5972,6 +5996,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                 return;
             }
             e.preventDefault();
+            markInteracting();
 
             // Reduced zoom increment for smoother control
             const delta = -Math.sign(e.deltaY) * 0.05;
@@ -6025,6 +6050,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             }
             if (e.touches.length === 2) {
                 e.preventDefault();
+                markInteracting();
                 isPanningCanvas = false;
                 window.__snakePanLocked = false;
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -6069,6 +6095,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
 
         document.addEventListener('mousemove', (e) => {
             if (isPanningCanvas) {
+                markInteracting();
                 panX = (e.clientX - panStartX) / zoomLevel;
                 panY = (e.clientY - panStartY) / zoomLevel;
                 updateCanvasTransform();
@@ -6124,6 +6151,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                 }
                 if (isPanningCanvas) {
                     e.preventDefault();
+                    markInteracting();
                     const newPanX = (e.touches[0].clientX - panStartX) / zoomLevel;
                     const newPanY = (e.touches[0].clientY - panStartY) / zoomLevel;
                     const now = Date.now();
@@ -6154,6 +6182,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
                     const tpy = (lastPinchMidY - cr.top)  / nearest - ly;
                     const t0 = performance.now(), dur = 300;
                     const snapStep = (now) => {
+                        markInteracting(); // keep letter animation paused while the zoom settles
                         const t = Math.min(1, (now - t0) / dur);
                         const ease = 1 - Math.pow(1 - t, 3);
                         zoomLevel = z0  + (nearest - z0)  * ease;
@@ -6179,6 +6208,7 @@ openStlViewer('content/ocu3D/TukTuk.glb');
             // Momentum pan
             if (isPanningCanvas && (Math.abs(panVelX) > 0.3 || Math.abs(panVelY) > 0.3)) {
                 const applyMomentum = () => {
+                    markInteracting(); // keep letter animation paused during the inertia glide
                     panVelX *= 0.90; panVelY *= 0.90;
                     if (Math.abs(panVelX) < 0.05 && Math.abs(panVelY) < 0.05) {
                         panMomentumRaf = null; return;
