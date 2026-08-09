@@ -752,7 +752,9 @@ function initThreeJS(container, filePath, options = {}) {
     const camera = new THREE.PerspectiveCamera(35, w / h, 1, 50000);
     camera.position.set(0, 0, 200);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // preserveDrawingBuffer keeps the rendered pixels readable AFTER compositing, so the
+    // screenshot feature (html2canvas) can capture the 3D model instead of a blank canvas.
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);

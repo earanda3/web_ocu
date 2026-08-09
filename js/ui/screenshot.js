@@ -44,6 +44,14 @@
 
     // Capture the currently visible viewport into a <canvas>.
     function captureViewport() {
+        // Force every open 3D viewer to render its current frame right now, so its
+        // WebGL buffer is up to date and gets captured (needs preserveDrawingBuffer).
+        try {
+            (window.stlViewers || []).forEach(function (v) {
+                if (v && v.renderer && v.scene && v.camera) v.renderer.render(v.scene, v.camera);
+            });
+        } catch (e) { }
+
         return loadHtml2Canvas().then(function (html2canvas) {
             var bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
             var vw = window.innerWidth || document.documentElement.clientWidth || 1280;
