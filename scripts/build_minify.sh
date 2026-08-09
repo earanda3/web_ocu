@@ -12,7 +12,7 @@ VER="${1:-dev}"
 
 JS_FILES=(
   js/app.js js/app-init.js
-  js/ui/stl-viewer.js js/ui/info-viewer.js js/ui/tecla-viewer.js
+  js/ui/stl-viewer.js js/ui/info-viewer.js js/ui/tecla-viewer.js js/ui/screenshot.js
   js/tecla-device.js js/tecla-modes.js js/tecla-simulator.js js/tecla-webmidi.js
   vendor/three/GLTFLoader.js vendor/three/DRACOLoader.js
 )

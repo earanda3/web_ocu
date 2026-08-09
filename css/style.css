@@ -396,6 +396,101 @@
             opacity: 0;
         }
 
+        /* Screenshot camera button + format chooser */
+        #screenshot-btn {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.72);
+            color: #333;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+            cursor: pointer;
+            z-index: 10001;
+            opacity: 0.55;
+            transition: opacity 180ms ease, transform 120ms ease, background 180ms ease;
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+        }
+
+        #screenshot-btn:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        #screenshot-btn:active {
+            transform: scale(0.92);
+        }
+
+        #screenshot-btn.busy {
+            opacity: 1;
+            animation: ssPulse 900ms ease-in-out infinite;
+            cursor: progress;
+        }
+
+        @keyframes ssPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.88); }
+        }
+
+        #screenshot-menu {
+            position: fixed;
+            right: 16px;
+            bottom: 66px;
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+            z-index: 10002;
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+        }
+
+        #screenshot-menu.open {
+            display: flex;
+        }
+
+        #screenshot-menu .ss-label {
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #888;
+            text-align: center;
+            padding: 2px 0 4px;
+        }
+
+        #screenshot-menu button {
+            border: none;
+            background: #f2f2f2;
+            color: #222;
+            font-size: 14px;
+            letter-spacing: 1px;
+            padding: 8px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 140ms ease;
+        }
+
+        #screenshot-menu button:hover {
+            background: #e2e2e2;
+        }
+
+        /* Keep the camera out of the way during the intro. */
+        body.intro-active #screenshot-btn,
+        body.intro-active #screenshot-menu {
+            opacity: 0;
+            pointer-events: none;
+        }
+
         /* STOP control */
         .intro-stop {
             position: fixed;
