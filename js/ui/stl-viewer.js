@@ -975,10 +975,14 @@ function loadSTLFile(viewer, filePath) {
                 viewer.controls.target.set(0, 0, 0);
                 const R = viewer.modelRadius;
                 // Distance that fits the model in the frame with margin (both axes).
+                // Margin (2.5x) is calibrated to match updateClippingPlanes' dynamic-FOV
+                // target (model ≤45% of frame): at this distance the "needed" FOV comes
+                // out to ~baseFov, so dynamic growth stays off at rest and only kicks in
+                // once you actually zoom in closer than the default view.
                 const vFov = viewer.camera.fov * Math.PI / 180;
                 const tanV = Math.tan(vFov / 2);
                 const tanH = tanV * (viewer.camera.aspect || 1);
-                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 1.5;
+                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 2.5;
                 // Generous zoom range: get right up close, or pull way back — no early cap.
                 viewer.controls.minDistance = Math.max(0.02, R * 0.03);
                 viewer.controls.maxDistance = R * 150;
