@@ -90,6 +90,58 @@
         }
         window.clearAllSlotIntervals = clearAllSlotIntervals;
 
+        // ---- Batched slot-machine scheduler -----------------------------------
+        // The word letters' font-swap animation used to run on ~90+ INDEPENDENT
+        // setInterval timers (one per letter), each writing to the DOM at its own
+        // arbitrary moment. That scattered many small forced style/layout passes
+        // across every frame, colliding with the canvas pan/zoom's own transform
+        // updates — the real source of navigation jank. This single
+        // requestAnimationFrame loop batches every letter's due update into ONE
+        // pass per frame instead, which is far cheaper and keeps the effect
+        // visibly alive even while interacting (see __slotPaused below — it now
+        // THINS the update rate rather than freezing it outright).
+        const __slotLetters = [];
+        let __slotSchedulerRunning = false;
+        let __slotPruneTick = 0;
+
+        function __registerSlotLetter(span, interval) {
+            __slotLetters.push({ span, interval, nextAt: performance.now() + interval });
+            if (!__slotSchedulerRunning) {
+                __slotSchedulerRunning = true;
+                requestAnimationFrame(__slotSchedulerTick);
+            }
+        }
+
+        function __slotSchedulerTick(now) {
+            requestAnimationFrame(__slotSchedulerTick);
+            if (window.__slotFrozen) return;
+            // While the user is panning/zooming, update only 1-in-4 due letters
+            // instead of all of them — noticeably lighter, but the effect never
+            // fully stops (this directly replaces the old hard-stop behaviour).
+            const thinned = !!window.__slotPaused;
+            let due = 0;
+            for (let i = 0; i < __slotLetters.length; i++) {
+                const L = __slotLetters[i];
+                if (now < L.nextAt) continue;
+                L.nextAt = now + L.interval;
+                due++;
+                if (thinned && (due % 4 !== 0)) continue;
+                const span = L.span;
+                if (!span.isConnected) continue;
+                fonts.forEach(f => span.classList.remove(f));
+                span.classList.add(fonts[Math.floor(Math.random() * fonts.length)]);
+                span.style.transform = 'scaleY(0.8)';
+                setTimeout(() => { span.style.transform = 'scaleY(1)'; }, 50);
+            }
+            // Periodically drop entries for letters removed from the DOM (word
+            // deleted/rebuilt) so this array doesn't grow unbounded over a session.
+            if (++__slotPruneTick % 300 === 0) {
+                for (let i = __slotLetters.length - 1; i >= 0; i--) {
+                    if (!__slotLetters[i].span.isConnected) __slotLetters.splice(i, 1);
+                }
+            }
+        }
+
         // Spawn a draggable intro word within a central safe area of the viewport
         function spawnIntroWord(text, fontList) {
             // If the intro overlay is already gone (intro ended/skipped), do NOT spawn
@@ -3793,22 +3845,11 @@
                 const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
                 span.classList.add(randomFont);
                 element.appendChild(span);
-                // If globally frozen, do not start the interval
+                // If globally frozen, do not register the letter at all.
                 if (window.__slotFrozen) {
                     return;
                 }
-                const id = setInterval(() => {
-                    // Skip all layout/paint work while the user is panning/zooming
-                    // (the perpetual font-swaps are the main cause of navigation jank).
-                    if (window.__slotPaused) return;
-                    fonts.forEach(font => span.classList.remove(font));
-                    const newFont = fonts[Math.floor(Math.random() * fonts.length)];
-                    span.classList.add(newFont);
-                    span.style.transform = 'scaleY(0.8)';
-                    setTimeout(() => { span.style.transform = 'scaleY(1)'; }, 50);
-                }, 200 + (index * 150));
-                if (!window.__mainIntervals) window.__mainIntervals = [];
-                window.__mainIntervals.push(id);
+                __registerSlotLetter(span, 200 + (index * 150));
             });
         }
 
@@ -4875,37 +4916,11 @@ openStlViewer('content/ocu3D/TukTuk.glb');
 
         // Removed createRandomWords function - no more simulated empty words
 
-        function createWordSlotMachine(element, text) {
-            element.innerHTML = '';
-
-            text.split('').forEach((letter, index) => {
-                const span = document.createElement('span');
-                span.className = 'letter';
-                span.textContent = letter;
-
-                const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
-                span.classList.add(randomFont);
-
-                element.appendChild(span);
-
-                if (window.__slotFrozen) {
-                    return;
-                }
-                const id = setInterval(() => {
-                    fonts.forEach(font => span.classList.remove(font));
-                    const newFont = fonts[Math.floor(Math.random() * fonts.length)];
-                    span.classList.add(newFont);
-
-                    span.style.transform = 'scaleY(0.8)';
-                    setTimeout(() => {
-                        span.style.transform = 'scaleY(1)';
-                    }, 50);
-
-                }, 300 + (index * 200) + (Math.random() * 200));
-                if (!window.__mainIntervals) window.__mainIntervals = [];
-                window.__mainIntervals.push(id);
-            });
-        }
+        // NOTE: createWordSlotMachine is defined once, near the top of this file
+        // (next to the batched scheduler it uses) — a duplicate, older definition
+        // used to live here and silently shadowed the real one (later function
+        // declarations win when two share a name in the same scope), which meant
+        // the pause/perf logic on the "real" one never actually ran. Removed.
 
         function addWordDragEvents(element) {
             let wordDragging = false;

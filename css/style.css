@@ -66,6 +66,10 @@
             transition: all 0.1s ease;
             transform-origin: center;
             animation: none;
+            /* A font swap changes this letter's own box size; containment tells the
+               browser that doesn't affect anything outside it, so recalculating it
+               doesn't need to touch the rest of the page's layout. */
+            contain: layout style;
         }
 
         /* Slot machine spinning effect */
