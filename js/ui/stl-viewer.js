@@ -44,14 +44,13 @@ function openStlViewerImpl(filePath) {
     viewerContainer.className = 'stl-viewer-container';
     viewerContainer.style.position = 'absolute';
     
-    // Default viewing window is now sized relative to the visible page, not a small
-    // fixed 200-600px box. The camera's FOV/near/far were already fixed so the model
-    // itself never gets sliced, but a small on-screen window meant that zooming in
-    // (pinch = camera dolly) quickly ran the model past the edges of that small
-    // rectangle — a framing/window-size problem, not a 3D clipping one. A much
-    // bigger default window gives far more room before that ever happens.
+    // Default viewing window: big and CONSISTENT (no longer a random 200-600px box —
+    // the user disliked that the size varied). ~90% of the smaller viewport dimension,
+    // so it's about as large as the visible page, exactly as requested. Zoom then
+    // grows/shrinks this window (pinch), so the model can be made even bigger with no
+    // distortion and without ever hitting an edge.
     const viewportMin = Math.min(window.innerWidth || 1280, window.innerHeight || 800);
-    const randomSize = Math.floor(Math.max(500, Math.min(2600, viewportMin * (0.75 + Math.random() * 0.25))));
+    const randomSize = Math.round(Math.max(320, Math.min(1500, viewportMin * 0.9)));
     viewerContainer.style.width = randomSize + 'px';
     viewerContainer.style.height = randomSize + 'px';
     
@@ -170,16 +169,35 @@ function enableStlResize(container, viewer) {
     // Wheel controls (use capture to prevent conflicts)
     container.addEventListener('wheel', (e) => {
         if (e.ctrlKey || e.metaKey) {
-            // Trackpad PINCH (macOS delivers it as a ctrlKey wheel) / Ctrl+wheel → ZOOM.
-            // Dollies the camera in/out (the natural pinch-to-zoom). Adaptive clipping
-            // planes keep the model from ever being sliced. setDistance clamps the range.
+            // Trackpad PINCH (macOS delivers it as a ctrlKey wheel) / Ctrl+wheel → ZOOM
+            // by growing/shrinking the WHOLE viewing window (magnify), NOT by moving
+            // the camera. This is the only zoom that satisfies all three constraints at
+            // once: the camera never moves so there's zero perspective distortion (the
+            // "deformation" the user saw came from widening the FOV to fit a dollied-in
+            // model); the model always stays perfectly framed so it never hits an edge;
+            // and it gets bigger/smaller on screen — re-rendered crisply at the new
+            // size — so you can make it as large as you want. The window grows from its
+            // CENTER so the model stays put on screen.
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-            if (viewer.controls && viewer.camera) {
-                const d = viewer.camera.position.distanceTo(viewer.controls.target);
-                const step = Math.max(-0.25, Math.min(0.25, e.deltaY * 0.01));
-                viewer.controls.setDistance(d * Math.exp(step));
+            const cur = parseFloat(container.style.width) || container.offsetWidth || 300;
+            const curH = parseFloat(container.style.height) || container.offsetHeight || cur;
+            const factor = Math.exp(Math.max(-0.25, Math.min(0.25, -e.deltaY * 0.01)));
+            const next = Math.max(200, Math.min(3000, cur * factor));
+            const left = parseFloat(container.style.left) || 0;
+            const top = parseFloat(container.style.top) || 0;
+            container.style.left = (left + (cur - next) / 2) + 'px';
+            container.style.top = (top + (curH - next) / 2) + 'px';
+            container.style.width = next + 'px';
+            container.style.height = next + 'px';
+            if (viewer.renderer) {
+                // Ease the pixel ratio down for very large windows to keep the GPU
+                // buffer sane (a 3000px window at DPR 2 would be a 6000px buffer).
+                viewer.renderer.setPixelRatio(next > 1400 ? 1.5 : Math.min(window.devicePixelRatio || 1, 2));
+                viewer.renderer.setSize(next, next);
+                viewer.camera.aspect = 1;
+                viewer.camera.updateProjectionMatrix();
             }
             return false;
         } else if (e.altKey) {
@@ -755,15 +773,10 @@ function initThreeJS(container, filePath, options = {}) {
     const scene = new THREE.Scene();
     scene.background = null;
 
-    // Wide field of view (was 35°, quite narrow/telephoto) so the viewing frame
-    // around the model is much bigger — more breathing room, easier to see the
-    // whole piece, and — combined with the adaptive clipping planes — much less
-    // likely to ever feel like it's brushing against the edge of the view. The
-    // fraction of the frame the model fills is governed purely by this angle and
-    // the camera distance (container pixel size doesn't change that fraction, only
-    // its resolution) — this is the actual lever for "more room before the model
-    // exceeds the window" when zooming in close.
-    const camera = new THREE.PerspectiveCamera(75, w / h, 0.01, 50000);
+    // Fixed, moderate field of view. Low enough that there's no visible perspective
+    // distortion ("fisheye"), and it never changes — zoom is done by resizing the
+    // window, not by moving the camera or the FOV, so the model can't deform.
+    const camera = new THREE.PerspectiveCamera(40, w / h, 0.01, 50000);
     camera.position.set(0, 0, 200);
 
     // preserveDrawingBuffer keeps the rendered pixels readable AFTER compositing, so the
@@ -793,8 +806,7 @@ function initThreeJS(container, filePath, options = {}) {
         mesh: null,
         animationId: null,
         controls: null,
-        options: options,
-        baseFov: camera.fov // floor for the dynamic FOV widening in updateClippingPlanes
+        options: options
     };
 
     viewer.controls = createOrbitControls(camera, renderer.domElement);
@@ -974,18 +986,15 @@ function loadSTLFile(viewer, filePath) {
             if (viewer.controls) {
                 viewer.controls.target.set(0, 0, 0);
                 const R = viewer.modelRadius;
-                // Distance that fits the model in the frame with margin (both axes).
-                // Margin (2.5x) is calibrated to match updateClippingPlanes' dynamic-FOV
-                // target (model ≤45% of frame): at this distance the "needed" FOV comes
-                // out to ~baseFov, so dynamic growth stays off at rest and only kicks in
-                // once you actually zoom in closer than the default view.
+                // Distance that frames the model comfortably (~65% of the frame) with
+                // the fixed FOV. The camera then stays here — zoom is window-resize, not
+                // dolly — so this is essentially the one, stable camera distance.
                 const vFov = viewer.camera.fov * Math.PI / 180;
                 const tanV = Math.tan(vFov / 2);
                 const tanH = tanV * (viewer.camera.aspect || 1);
-                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 2.5;
-                // Generous zoom range: get right up close, or pull way back — no early cap.
-                viewer.controls.minDistance = Math.max(0.02, R * 0.03);
-                viewer.controls.maxDistance = R * 150;
+                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 1.5;
+                viewer.controls.minDistance = Math.max(0.02, R * 0.05);
+                viewer.controls.maxDistance = R * 200;
                 viewer.controls.setDistance(viewer.controls.fitDistance);
             }
         })
@@ -1063,37 +1072,18 @@ function updateClippingPlanes(viewer) {
     __clipToMesh.subVectors(viewer.mesh.position, cam.position);
     const d = __clipToMesh.dot(__clipViewDir);
 
-    // Dynamic FOV: how much of the frame the model fills is set by the camera angle
-    // and the distance to it — NOT by the on-screen window's pixel size (a bigger
-    // window shows the same fraction at higher resolution, it doesn't change the
-    // fraction). So a fixed FOV will always, eventually, run out of room as you
-    // dolly in close — the model's angular size keeps growing and nothing about the
-    // container can stop that. The real fix: widen the FOV itself as you get close,
-    // the way a camera would switch to a wider lens, so the model keeps a
-    // comfortable margin inside the frame at any zoom depth. Capped so it only
-    // kicks in once you're genuinely close, and never turns into extreme fisheye.
-    if (d > 0.001) {
-        const baseFov = viewer.baseFov || cam.fov;
-        // Model targeted at ≤45% of the frame (was 70%) and capped at 165° (was 140°,
-        // getting close to the ~180° theoretical ceiling of a perspective camera) —
-        // pushed as far as both numbers reasonably go, so there's a lot more room
-        // before you'd ever see an edge. Cropping now only starts once the camera is
-        // closer than ~1.3x the model's own radius — i.e. right at its surface.
-        const neededFov = (2 * Math.atan(R / d) / 0.45) * 180 / Math.PI;
-        const targetFov = Math.min(165, Math.max(baseFov, neededFov));
-        if (Math.abs(cam.fov - targetFov) > 0.1) cam.fov = targetFov;
-    }
-
-    // Generous margins (wide "viewing frame"): near sits well in front of the
-    // model's nearest surface, far well behind its farthest — the model is never
-    // anywhere close to either plane, so it can be rotated/panned/scaled freely.
+    // The camera FOV is fixed (no dynamic widening) — a moving FOV is exactly the
+    // "the camera deforms when zooming" distortion. Zoom is done by resizing the
+    // window (see the pinch handler), which never touches the camera. Here we only
+    // keep the near/far clipping planes wrapped snugly around the model at any
+    // distance/scale so it's never sliced — projecting onto the view axis so it
+    // stays correct even after panning moves controls.target off the model.
     const near = Math.max(0.01, d - R * 1.5);
     const far = Math.max(near + 1, d + R * 3 + 30);
-    if (Math.abs(cam.near - near) > 1e-4 || Math.abs(cam.far - far) > 1e-2 || cam.fov !== cam.__lastAppliedFov) {
+    if (Math.abs(cam.near - near) > 1e-4 || Math.abs(cam.far - far) > 1e-2) {
         cam.near = near;
         cam.far = far;
         cam.updateProjectionMatrix();
-        cam.__lastAppliedFov = cam.fov;
     }
 }
 
