@@ -44,8 +44,14 @@ function openStlViewerImpl(filePath) {
     viewerContainer.className = 'stl-viewer-container';
     viewerContainer.style.position = 'absolute';
     
-    // Random size between 200px and 600px
-    const randomSize = Math.floor(200 + Math.random() * 400);
+    // Default viewing window is now sized relative to the visible page, not a small
+    // fixed 200-600px box. The camera's FOV/near/far were already fixed so the model
+    // itself never gets sliced, but a small on-screen window meant that zooming in
+    // (pinch = camera dolly) quickly ran the model past the edges of that small
+    // rectangle — a framing/window-size problem, not a 3D clipping one. A much
+    // bigger default window gives far more room before that ever happens.
+    const viewportMin = Math.min(window.innerWidth || 1280, window.innerHeight || 800);
+    const randomSize = Math.floor(Math.max(400, Math.min(1800, viewportMin * (0.6 + Math.random() * 0.3))));
     viewerContainer.style.width = randomSize + 'px';
     viewerContainer.style.height = randomSize + 'px';
     
@@ -752,8 +758,12 @@ function initThreeJS(container, filePath, options = {}) {
     // Wide field of view (was 35°, quite narrow/telephoto) so the viewing frame
     // around the model is much bigger — more breathing room, easier to see the
     // whole piece, and — combined with the adaptive clipping planes — much less
-    // likely to ever feel like it's brushing against the edge of the view.
-    const camera = new THREE.PerspectiveCamera(60, w / h, 0.01, 50000);
+    // likely to ever feel like it's brushing against the edge of the view. The
+    // fraction of the frame the model fills is governed purely by this angle and
+    // the camera distance (container pixel size doesn't change that fraction, only
+    // its resolution) — this is the actual lever for "more room before the model
+    // exceeds the window" when zooming in close.
+    const camera = new THREE.PerspectiveCamera(75, w / h, 0.01, 50000);
     camera.position.set(0, 0, 200);
 
     // preserveDrawingBuffer keeps the rendered pixels readable AFTER compositing, so the
@@ -783,7 +793,8 @@ function initThreeJS(container, filePath, options = {}) {
         mesh: null,
         animationId: null,
         controls: null,
-        options: options
+        options: options,
+        baseFov: camera.fov // floor for the dynamic FOV widening in updateClippingPlanes
     };
 
     viewer.controls = createOrbitControls(camera, renderer.domElement);
@@ -1047,15 +1058,33 @@ function updateClippingPlanes(viewer) {
     cam.getWorldDirection(__clipViewDir);
     __clipToMesh.subVectors(viewer.mesh.position, cam.position);
     const d = __clipToMesh.dot(__clipViewDir);
+
+    // Dynamic FOV: how much of the frame the model fills is set by the camera angle
+    // and the distance to it — NOT by the on-screen window's pixel size (a bigger
+    // window shows the same fraction at higher resolution, it doesn't change the
+    // fraction). So a fixed FOV will always, eventually, run out of room as you
+    // dolly in close — the model's angular size keeps growing and nothing about the
+    // container can stop that. The real fix: widen the FOV itself as you get close,
+    // the way a camera would switch to a wider lens, so the model keeps a
+    // comfortable margin inside the frame at any zoom depth. Capped so it only
+    // kicks in once you're genuinely close, and never turns into extreme fisheye.
+    if (d > 0.001) {
+        const baseFov = viewer.baseFov || cam.fov;
+        const neededFov = (2 * Math.atan(R / d) / 0.7) * 180 / Math.PI; // model ≤ ~70% of frame
+        const targetFov = Math.min(140, Math.max(baseFov, neededFov));
+        if (Math.abs(cam.fov - targetFov) > 0.1) cam.fov = targetFov;
+    }
+
     // Generous margins (wide "viewing frame"): near sits well in front of the
     // model's nearest surface, far well behind its farthest — the model is never
     // anywhere close to either plane, so it can be rotated/panned/scaled freely.
     const near = Math.max(0.01, d - R * 1.5);
     const far = Math.max(near + 1, d + R * 3 + 30);
-    if (Math.abs(cam.near - near) > 1e-4 || Math.abs(cam.far - far) > 1e-2) {
+    if (Math.abs(cam.near - near) > 1e-4 || Math.abs(cam.far - far) > 1e-2 || cam.fov !== cam.__lastAppliedFov) {
         cam.near = near;
         cam.far = far;
         cam.updateProjectionMatrix();
+        cam.__lastAppliedFov = cam.fov;
     }
 }
 
