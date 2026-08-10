@@ -51,7 +51,7 @@ function openStlViewerImpl(filePath) {
     // rectangle — a framing/window-size problem, not a 3D clipping one. A much
     // bigger default window gives far more room before that ever happens.
     const viewportMin = Math.min(window.innerWidth || 1280, window.innerHeight || 800);
-    const randomSize = Math.floor(Math.max(400, Math.min(1800, viewportMin * (0.6 + Math.random() * 0.3))));
+    const randomSize = Math.floor(Math.max(500, Math.min(2600, viewportMin * (0.75 + Math.random() * 0.25))));
     viewerContainer.style.width = randomSize + 'px';
     viewerContainer.style.height = randomSize + 'px';
     
@@ -1070,8 +1070,13 @@ function updateClippingPlanes(viewer) {
     // kicks in once you're genuinely close, and never turns into extreme fisheye.
     if (d > 0.001) {
         const baseFov = viewer.baseFov || cam.fov;
-        const neededFov = (2 * Math.atan(R / d) / 0.7) * 180 / Math.PI; // model ≤ ~70% of frame
-        const targetFov = Math.min(140, Math.max(baseFov, neededFov));
+        // Model targeted at ≤45% of the frame (was 70%) and capped at 165° (was 140°,
+        // getting close to the ~180° theoretical ceiling of a perspective camera) —
+        // pushed as far as both numbers reasonably go, so there's a lot more room
+        // before you'd ever see an edge. Cropping now only starts once the camera is
+        // closer than ~1.3x the model's own radius — i.e. right at its surface.
+        const neededFov = (2 * Math.atan(R / d) / 0.45) * 180 / Math.PI;
+        const targetFov = Math.min(165, Math.max(baseFov, neededFov));
         if (Math.abs(cam.fov - targetFov) > 0.1) cam.fov = targetFov;
     }
 
