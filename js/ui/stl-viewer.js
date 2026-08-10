@@ -749,7 +749,11 @@ function initThreeJS(container, filePath, options = {}) {
     const scene = new THREE.Scene();
     scene.background = null;
 
-    const camera = new THREE.PerspectiveCamera(35, w / h, 1, 50000);
+    // Wide field of view (was 35°, quite narrow/telephoto) so the viewing frame
+    // around the model is much bigger — more breathing room, easier to see the
+    // whole piece, and — combined with the adaptive clipping planes — much less
+    // likely to ever feel like it's brushing against the edge of the view.
+    const camera = new THREE.PerspectiveCamera(60, w / h, 0.01, 50000);
     camera.position.set(0, 0, 200);
 
     // preserveDrawingBuffer keeps the rendered pixels readable AFTER compositing, so the
@@ -963,10 +967,10 @@ function loadSTLFile(viewer, filePath) {
                 const vFov = viewer.camera.fov * Math.PI / 180;
                 const tanV = Math.tan(vFov / 2);
                 const tanH = tanV * (viewer.camera.aspect || 1);
-                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 1.3;
+                viewer.controls.fitDistance = R / Math.max(0.0001, Math.min(tanV, tanH)) * 1.5;
                 // Generous zoom range: get right up close, or pull way back — no early cap.
-                viewer.controls.minDistance = Math.max(0.05, R * 0.05);
-                viewer.controls.maxDistance = R * 80;
+                viewer.controls.minDistance = Math.max(0.02, R * 0.03);
+                viewer.controls.maxDistance = R * 150;
                 viewer.controls.setDistance(viewer.controls.fitDistance);
             }
         })
@@ -1021,17 +1025,37 @@ function parseSTL(arrayBuffer) {
 // scale, so it's never sliced by a plane — the main cause of the "the object gets cut
 // off / disappears" problem. Recomputed every frame from the current camera distance
 // and the model's effective radius (bounding sphere × current mesh scale).
+// Reused scratch vectors — updateClippingPlanes runs every frame for every open
+// viewer, so avoid allocating a new Vector3 each call. Created lazily (not at
+// module scope) because THREE is lazy-loaded and isn't defined yet when this
+// script itself first runs.
+let __clipViewDir = null;
+let __clipToMesh = null;
+
 function updateClippingPlanes(viewer) {
-    if (!viewer.camera || !viewer.controls || !viewer.mesh) return;
+    if (!viewer.camera || !viewer.mesh) return;
+    if (!__clipViewDir) { __clipViewDir = new THREE.Vector3(); __clipToMesh = new THREE.Vector3(); }
+    const cam = viewer.camera;
     const scl = viewer.mesh.scale ? viewer.mesh.scale.x : 1;
     const R = (viewer.modelRadius || 30) * scl;
-    const d = viewer.camera.position.distanceTo(viewer.controls.target);
-    const near = Math.max(0.01, (d - R) * 0.5);
-    const far = (d + R) * 2 + 10;
-    if (Math.abs(viewer.camera.near - near) > 1e-4 || Math.abs(viewer.camera.far - far) > 1e-2) {
-        viewer.camera.near = near;
-        viewer.camera.far = far;
-        viewer.camera.updateProjectionMatrix();
+    // Distance to the model ALONG THE CAMERA'S VIEW AXIS — not straight-line distance
+    // to controls.target. Right-drag panning moves controls.target away from the
+    // model (which always sits at the scene origin), so using target distance made
+    // near/far bound empty space instead of the model once panned — that's what was
+    // still slicing it. Projecting onto the view direction is correct regardless of
+    // panning, rotation or zoom.
+    cam.getWorldDirection(__clipViewDir);
+    __clipToMesh.subVectors(viewer.mesh.position, cam.position);
+    const d = __clipToMesh.dot(__clipViewDir);
+    // Generous margins (wide "viewing frame"): near sits well in front of the
+    // model's nearest surface, far well behind its farthest — the model is never
+    // anywhere close to either plane, so it can be rotated/panned/scaled freely.
+    const near = Math.max(0.01, d - R * 1.5);
+    const far = Math.max(near + 1, d + R * 3 + 30);
+    if (Math.abs(cam.near - near) > 1e-4 || Math.abs(cam.far - far) > 1e-2) {
+        cam.near = near;
+        cam.far = far;
+        cam.updateProjectionMatrix();
     }
 }
 
